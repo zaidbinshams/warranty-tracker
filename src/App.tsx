@@ -1,21 +1,15 @@
 import { useState } from "react";
+import { db, type Product } from "./db/database";
+import { useProducts } from "./db/hooks";
 
 type Page = "dashboard" | "products" | "documents" | "claims";
-
-type Product = {
-  id: number;
-  name: string;
-  brand: string;
-  model: string;
-  purchaseDate: string;
-};
 
 function App() {
   const [activePage, setActivePage] = useState<Page>("dashboard");
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
 
-  const [products, setProducts] = useState<Product[]>([]);
-
+  const products = useProducts();
+  const productCount = products?.length ?? 0;
   const [formData, setFormData] = useState({
     name: "",
     brand: "",
@@ -34,29 +28,31 @@ function App() {
     }));
   };
 
-  const handleAddProduct = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleAddProduct = async (
+  event: React.FormEvent<HTMLFormElement>
+) => {
+  event.preventDefault();
 
-    const newProduct: Product = {
-      id: Date.now(),
-      name: formData.name,
-      brand: formData.brand,
-      model: formData.model,
-      purchaseDate: formData.purchaseDate,
-    };
-
-    setProducts((current) => [...current, newProduct]);
-
-    setFormData({
-      name: "",
-      brand: "",
-      model: "",
-      purchaseDate: "",
-    });
-
-    setIsAddProductOpen(false);
-    setActivePage("products");
+  const product: Product = {
+    name: formData.name.trim(),
+    brand: formData.brand.trim(),
+    model: formData.model.trim(),
+    purchaseDate: formData.purchaseDate,
+    createdAt: new Date().toISOString(),
   };
+
+  await db.products.add(product);
+
+  setFormData({
+    name: "",
+    brand: "",
+    model: "",
+    purchaseDate: "",
+  });
+
+  setIsAddProductOpen(false);
+  setActivePage("products");
+};
 
   const openAddProductModal = () => {
     setIsAddProductOpen(true);
@@ -85,7 +81,7 @@ function App() {
               </button>
             </div>
 
-            {products.length === 0 ? (
+            {productCount === 0 ? (
               <div className="empty-state">
                 <div className="empty-icon">+</div>
 
@@ -105,7 +101,7 @@ function App() {
               </div>
             ) : (
               <div className="product-list">
-                {products.map((product) => (
+                {products?.map((product) => (
                   <article className="product-card" key={product.id}>
                     <div>
                       <p className="product-brand">{product.brand}</p>
@@ -184,7 +180,7 @@ function App() {
               <div className="stats-grid">
                 <div className="stat-card green-card">
                   <p>Products</p>
-                  <strong>{products.length}</strong>
+                  <strong>{productCount}</strong>
                   <span>Tracked products</span>
                 </div>
 
@@ -223,7 +219,7 @@ function App() {
                 </button>
               </div>
 
-              {products.length === 0 ? (
+              {productCount === 0 ? (
                 <div className="empty-state">
                   <div className="empty-icon">+</div>
 
@@ -243,7 +239,7 @@ function App() {
                 </div>
               ) : (
                 <div className="product-list">
-                  {products.slice(0, 3).map((product) => (
+                  {products?.slice(0, 3).map((product) => (
                     <article className="product-card" key={product.id}>
                       <div>
                         <p className="product-brand">{product.brand}</p>
