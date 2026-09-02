@@ -7,6 +7,7 @@ export type Product = {
   model: string;
   purchaseDate: string;
   createdAt: string;
+  updatedAt: string;
 };
 
 class WarrantyDatabase extends Dexie {

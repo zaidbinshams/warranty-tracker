@@ -7,7 +7,7 @@ type Page = "dashboard" | "products" | "documents" | "claims";
 function App() {
   const [activePage, setActivePage] = useState<Page>("dashboard");
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
-
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const products = useProducts();
   const productCount = products?.length ?? 0;
   const [formData, setFormData] = useState({
@@ -29,37 +29,103 @@ function App() {
   };
 
   const handleAddProduct = async (
-  event: React.FormEvent<HTMLFormElement>
-) => {
-  event.preventDefault();
+    event: React.FormEvent<HTMLFormElement>
+  ) => {
+    event.preventDefault();
 
-  const product: Product = {
-    name: formData.name.trim(),
-    brand: formData.brand.trim(),
-    model: formData.model.trim(),
-    purchaseDate: formData.purchaseDate,
-    createdAt: new Date().toISOString(),
+    const now = new Date().toISOString();
+
+    const product: Product = {
+      name: formData.name.trim(),
+      brand: formData.brand.trim(),
+      model: formData.model.trim(),
+      purchaseDate: formData.purchaseDate,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await db.products.add(product);
+
+    setFormData({
+      name: "",
+      brand: "",
+      model: "",
+      purchaseDate: "",
+    });
+
+    setIsAddProductOpen(false);
+    setActivePage("products");
   };
 
-  await db.products.add(product);
+  const handleEditProduct = async (
+    event: React.FormEvent<HTMLFormElement>
+  ) => {
+    event.preventDefault();
 
-  setFormData({
-    name: "",
-    brand: "",
-    model: "",
-    purchaseDate: "",
-  });
+    if (!editingProduct?.id) {
+      return;
+    }
 
-  setIsAddProductOpen(false);
-  setActivePage("products");
-};
+    await db.products.update(editingProduct.id, {
+      name: formData.name.trim(),
+      brand: formData.brand.trim(),
+      model: formData.model.trim(),
+      purchaseDate: formData.purchaseDate,
+      updatedAt: new Date().toISOString(),
+    });
+
+    setFormData({
+      name: "",
+      brand: "",
+      model: "",
+      purchaseDate: "",
+    });
+
+    setEditingProduct(null);
+    setIsAddProductOpen(false);
+  };
+
+  const handleDeleteProduct = async (id: number) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this product?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    await db.products.delete(id);
+  };
+
+  const openEditProduct = (product: Product) => {
+    setEditingProduct(product);
+
+    setFormData({
+      name: product.name,
+      brand: product.brand,
+      model: product.model,
+      purchaseDate: product.purchaseDate,
+    });
+
+    setIsAddProductOpen(true);
+  };
 
   const openAddProductModal = () => {
+    setEditingProduct(null);
+
+    setFormData({
+      name: "",
+      brand: "",
+      model: "",
+      purchaseDate: "",
+    });
+
     setIsAddProductOpen(true);
   };
 
   const closeAddProductModal = () => {
     setIsAddProductOpen(false);
+    setEditingProduct(null);
   };
 
   const renderPage = () => {
@@ -116,6 +182,21 @@ function App() {
                       <strong>
                         {product.purchaseDate || "Not provided"}
                       </strong>
+                    </div>
+                    <div className="product-actions">
+                      <button
+                        className="secondary-button"
+                        onClick={() => openEditProduct(product)}
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        className="delete-button"
+                        onClick={() => handleDeleteProduct(product.id!)}
+                      >
+                        Delete
+                      </button>
                     </div>
                   </article>
                 ))}
@@ -255,6 +336,21 @@ function App() {
                           {product.purchaseDate || "Not provided"}
                         </strong>
                       </div>
+                      <div className="product-actions">
+                        <button
+                          className="secondary-button"
+                          onClick={() => openEditProduct(product)}
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          className="delete-button"
+                          onClick={() => handleDeleteProduct(product.id!)}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </article>
                   ))}
                 </div>
@@ -279,36 +375,32 @@ function App() {
 
         <nav className="navigation">
           <button
-            className={`nav-item ${
-              activePage === "dashboard" ? "active" : ""
-            }`}
+            className={`nav-item ${activePage === "dashboard" ? "active" : ""
+              }`}
             onClick={() => setActivePage("dashboard")}
           >
             Dashboard
           </button>
 
           <button
-            className={`nav-item ${
-              activePage === "products" ? "active" : ""
-            }`}
+            className={`nav-item ${activePage === "products" ? "active" : ""
+              }`}
             onClick={() => setActivePage("products")}
           >
             Products
           </button>
 
           <button
-            className={`nav-item ${
-              activePage === "documents" ? "active" : ""
-            }`}
+            className={`nav-item ${activePage === "documents" ? "active" : ""
+              }`}
             onClick={() => setActivePage("documents")}
           >
             Documents
           </button>
 
           <button
-            className={`nav-item ${
-              activePage === "claims" ? "active" : ""
-            }`}
+            className={`nav-item ${activePage === "claims" ? "active" : ""
+              }`}
             onClick={() => setActivePage("claims")}
           >
             Claims
@@ -330,20 +422,20 @@ function App() {
               {activePage === "dashboard"
                 ? "Dashboard"
                 : activePage === "products"
-                ? "Products"
-                : activePage === "documents"
-                ? "Documents"
-                : "Claims"}
+                  ? "Products"
+                  : activePage === "documents"
+                    ? "Documents"
+                    : "Claims"}
             </p>
 
             <h2>
               {activePage === "dashboard"
                 ? "Welcome to Warranty Tracker"
                 : activePage === "products"
-                ? "Your products"
-                : activePage === "documents"
-                ? "Your documents"
-                : "Your warranty claims"}
+                  ? "Your products"
+                  : activePage === "documents"
+                    ? "Your documents"
+                    : "Your warranty claims"}
             </h2>
           </div>
 
@@ -366,8 +458,13 @@ function App() {
           >
             <div className="modal-header">
               <div>
-                <p className="eyebrow">New product</p>
-                <h3>Add a product</h3>
+                <p className="eyebrow">
+                  {editingProduct ? "Edit product" : "New product"}
+                </p>
+
+                <h3>
+                  {editingProduct ? "Edit product" : "Add a product"}
+                </h3>
               </div>
 
               <button
@@ -379,7 +476,13 @@ function App() {
               </button>
             </div>
 
-            <form onSubmit={handleAddProduct}>
+            <form
+              onSubmit={
+                editingProduct
+                  ? handleEditProduct
+                  : handleAddProduct
+              }
+            >
               <div className="form-group">
                 <label htmlFor="name">Product name</label>
                 <input
@@ -438,7 +541,7 @@ function App() {
                 </button>
 
                 <button type="submit" className="primary-button">
-                  Add Product
+                  {editingProduct ? "Save Changes" : "Add Product"}
                 </button>
               </div>
             </form>
