@@ -1,15 +1,34 @@
 import { useState } from "react";
+import type { ChangeEvent, FormEvent } from "react";
+
 import { db, type Product } from "./db/database";
-import { useProducts } from "./db/hooks";
+import {
+  useProducts,
+  useWarranties,
+} from "./db/hooks";
+import {
+  getWarrantyStatus,
+} from "./utils/warranty";
+import AddWarrantyModal from "./components/AddWarrantyModal";
 
 type Page = "dashboard" | "products" | "documents" | "claims";
 
 function App() {
-  const [activePage, setActivePage] = useState<Page>("dashboard");
-  const [isAddProductOpen, setIsAddProductOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const products = useProducts();
-  const productCount = products?.length ?? 0;
+  const warranties = useWarranties();
+
+  const [activePage, setActivePage] =
+    useState<Page>("dashboard");
+
+  const [isProductModalOpen, setIsProductModalOpen] =
+    useState(false);
+
+  const [editingProduct, setEditingProduct] =
+    useState<Product | null>(null);
+
+  const [warrantyProductId, setWarrantyProductId] =
+    useState<number | null>(null);
+
   const [formData, setFormData] = useState({
     name: "",
     brand: "",
@@ -17,8 +36,36 @@ function App() {
     purchaseDate: "",
   });
 
+  /* --------------------------------
+     Derived dashboard values
+  -------------------------------- */
+
+  const productCount = products?.length ?? 0;
+
+  const activeWarrantyCount =
+    warranties?.filter(
+      (warranty) =>
+        getWarrantyStatus(warranty.endDate) === "active"
+    ).length ?? 0;
+
+  const expiringWarrantyCount =
+    warranties?.filter(
+      (warranty) =>
+        getWarrantyStatus(warranty.endDate) === "expiring"
+    ).length ?? 0;
+
+  const expiredWarrantyCount =
+    warranties?.filter(
+      (warranty) =>
+        getWarrantyStatus(warranty.endDate) === "expired"
+    ).length ?? 0;
+
+  /* --------------------------------
+     Product form
+  -------------------------------- */
+
   const handleInputChange = (
-    event: React.ChangeEvent<HTMLInputElement>
+    event: ChangeEvent<HTMLInputElement>
   ) => {
     const { name, value } = event.target;
 
@@ -28,8 +75,29 @@ function App() {
     }));
   };
 
+  const resetProductForm = () => {
+    setFormData({
+      name: "",
+      brand: "",
+      model: "",
+      purchaseDate: "",
+    });
+  };
+
+  const openAddProductModal = () => {
+    setEditingProduct(null);
+    resetProductForm();
+    setIsProductModalOpen(true);
+  };
+
+  const closeProductModal = () => {
+    setIsProductModalOpen(false);
+    setEditingProduct(null);
+    resetProductForm();
+  };
+
   const handleAddProduct = async (
-    event: React.FormEvent<HTMLFormElement>
+    event: FormEvent<HTMLFormElement>
   ) => {
     event.preventDefault();
 
@@ -46,19 +114,25 @@ function App() {
 
     await db.products.add(product);
 
-    setFormData({
-      name: "",
-      brand: "",
-      model: "",
-      purchaseDate: "",
-    });
-
-    setIsAddProductOpen(false);
+    closeProductModal();
     setActivePage("products");
   };
 
+  const openEditProduct = (product: Product) => {
+    setEditingProduct(product);
+
+    setFormData({
+      name: product.name,
+      brand: product.brand,
+      model: product.model,
+      purchaseDate: product.purchaseDate,
+    });
+
+    setIsProductModalOpen(true);
+  };
+
   const handleEditProduct = async (
-    event: React.FormEvent<HTMLFormElement>
+    event: FormEvent<HTMLFormElement>
   ) => {
     event.preventDefault();
 
@@ -74,15 +148,7 @@ function App() {
       updatedAt: new Date().toISOString(),
     });
 
-    setFormData({
-      name: "",
-      brand: "",
-      model: "",
-      purchaseDate: "",
-    });
-
-    setEditingProduct(null);
-    setIsAddProductOpen(false);
+    closeProductModal();
   };
 
   const handleDeleteProduct = async (id: number) => {
@@ -97,35 +163,78 @@ function App() {
     await db.products.delete(id);
   };
 
-  const openEditProduct = (product: Product) => {
-    setEditingProduct(product);
+  /* --------------------------------
+     Warranty modal
+  -------------------------------- */
 
-    setFormData({
-      name: product.name,
-      brand: product.brand,
-      model: product.model,
-      purchaseDate: product.purchaseDate,
-    });
-
-    setIsAddProductOpen(true);
+  const openWarrantyModal = (productId: number) => {
+    setWarrantyProductId(productId);
   };
 
-  const openAddProductModal = () => {
-    setEditingProduct(null);
-
-    setFormData({
-      name: "",
-      brand: "",
-      model: "",
-      purchaseDate: "",
-    });
-
-    setIsAddProductOpen(true);
+  const closeWarrantyModal = () => {
+    setWarrantyProductId(null);
   };
 
-  const closeAddProductModal = () => {
-    setIsAddProductOpen(false);
-    setEditingProduct(null);
+  /* --------------------------------
+     Page rendering
+  -------------------------------- */
+
+  const renderProductCard = (product: Product) => {
+    return (
+      <article
+        className="product-card"
+        key={product.id}
+      >
+        <div className="product-information">
+          <p className="product-brand">
+            {product.brand || "Unknown brand"}
+          </p>
+
+          <h4>{product.name}</h4>
+
+          <p className="product-model">
+            Model: {product.model || "Not provided"}
+          </p>
+        </div>
+
+        <div className="product-date">
+          <span>Purchased</span>
+
+          <strong>
+            {product.purchaseDate || "Not provided"}
+          </strong>
+        </div>
+
+        <div className="product-actions">
+          <button
+            className="primary-button"
+            onClick={() =>
+              openWarrantyModal(product.id!)
+            }
+          >
+            Add Warranty
+          </button>
+
+          <button
+            className="secondary-button"
+            onClick={() =>
+              openEditProduct(product)
+            }
+          >
+            Edit
+          </button>
+
+          <button
+            className="delete-button"
+            onClick={() =>
+              handleDeleteProduct(product.id!)
+            }
+          >
+            Delete
+          </button>
+        </div>
+      </article>
+    );
   };
 
   const renderPage = () => {
@@ -154,8 +263,9 @@ function App() {
                 <h4>No products yet</h4>
 
                 <p>
-                  Add your first product to start tracking its warranty,
-                  documents, and service history.
+                  Add your first product to start
+                  tracking its warranty, documents,
+                  and service history.
                 </p>
 
                 <button
@@ -167,39 +277,7 @@ function App() {
               </div>
             ) : (
               <div className="product-list">
-                {products?.map((product) => (
-                  <article className="product-card" key={product.id}>
-                    <div>
-                      <p className="product-brand">{product.brand}</p>
-                      <h4>{product.name}</h4>
-                      <p className="product-model">
-                        Model: {product.model || "Not provided"}
-                      </p>
-                    </div>
-
-                    <div className="product-date">
-                      <span>Purchased</span>
-                      <strong>
-                        {product.purchaseDate || "Not provided"}
-                      </strong>
-                    </div>
-                    <div className="product-actions">
-                      <button
-                        className="secondary-button"
-                        onClick={() => openEditProduct(product)}
-                      >
-                        Edit
-                      </button>
-
-                      <button
-                        className="delete-button"
-                        onClick={() => handleDeleteProduct(product.id!)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </article>
-                ))}
+                {products?.map(renderProductCard)}
               </div>
             )}
           </section>
@@ -217,10 +295,12 @@ function App() {
 
             <div className="empty-state">
               <div className="empty-icon">+</div>
+
               <h4>No documents yet</h4>
+
               <p>
-                Receipts, warranty cards, manuals, and service documents will
-                appear here.
+                Receipts, warranty cards, manuals,
+                and service documents will appear here.
               </p>
             </div>
           </section>
@@ -238,9 +318,12 @@ function App() {
 
             <div className="empty-state">
               <div className="empty-icon">+</div>
+
               <h4>No claims yet</h4>
+
               <p>
-                Warranty claims and their progress will appear here.
+                Warranty claims and their progress
+                will appear here.
               </p>
             </div>
           </section>
@@ -261,26 +344,50 @@ function App() {
               <div className="stats-grid">
                 <div className="stat-card green-card">
                   <p>Products</p>
-                  <strong>{productCount}</strong>
-                  <span>Tracked products</span>
+
+                  <strong>
+                    {productCount}
+                  </strong>
+
+                  <span>
+                    Tracked products
+                  </span>
                 </div>
 
                 <div className="stat-card blue-card">
                   <p>Active Warranties</p>
-                  <strong>0</strong>
-                  <span>Currently covered</span>
+
+                  <strong>
+                    {activeWarrantyCount}
+                  </strong>
+
+                  <span>
+                    Currently covered
+                  </span>
                 </div>
 
                 <div className="stat-card light-card">
                   <p>Expiring Soon</p>
-                  <strong>0</strong>
-                  <span>Within 30 days</span>
+
+                  <strong>
+                    {expiringWarrantyCount}
+                  </strong>
+
+                  <span>
+                    Within 30 days
+                  </span>
                 </div>
 
                 <div className="stat-card dark-card">
                   <p>Expired</p>
-                  <strong>0</strong>
-                  <span>Needs attention</span>
+
+                  <strong>
+                    {expiredWarrantyCount}
+                  </strong>
+
+                  <span>
+                    Needs attention
+                  </span>
                 </div>
               </div>
             </section>
@@ -294,7 +401,9 @@ function App() {
 
                 <button
                   className="secondary-button"
-                  onClick={() => setActivePage("products")}
+                  onClick={() =>
+                    setActivePage("products")
+                  }
                 >
                   View all
                 </button>
@@ -307,8 +416,9 @@ function App() {
                   <h4>No products yet</h4>
 
                   <p>
-                    Add your first product to start tracking its warranty,
-                    documents, and service history.
+                    Add your first product to start
+                    tracking its warranty, documents,
+                    and service history.
                   </p>
 
                   <button
@@ -320,39 +430,9 @@ function App() {
                 </div>
               ) : (
                 <div className="product-list">
-                  {products?.slice(0, 3).map((product) => (
-                    <article className="product-card" key={product.id}>
-                      <div>
-                        <p className="product-brand">{product.brand}</p>
-                        <h4>{product.name}</h4>
-                        <p className="product-model">
-                          Model: {product.model || "Not provided"}
-                        </p>
-                      </div>
-
-                      <div className="product-date">
-                        <span>Purchased</span>
-                        <strong>
-                          {product.purchaseDate || "Not provided"}
-                        </strong>
-                      </div>
-                      <div className="product-actions">
-                        <button
-                          className="secondary-button"
-                          onClick={() => openEditProduct(product)}
-                        >
-                          Edit
-                        </button>
-
-                        <button
-                          className="delete-button"
-                          onClick={() => handleDeleteProduct(product.id!)}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </article>
-                  ))}
+                  {products
+                    ?.slice(0, 3)
+                    .map(renderProductCard)}
                 </div>
               )}
             </section>
@@ -363,45 +443,72 @@ function App() {
 
   return (
     <div className="app">
+      {/* Sidebar */}
+
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark">WT</div>
+          <div className="brand-mark">
+            WT
+          </div>
 
           <div>
             <h1>Warranty Tracker</h1>
-            <p>Your products, protected.</p>
+
+            <p>
+              Your products, protected.
+            </p>
           </div>
         </div>
 
         <nav className="navigation">
           <button
-            className={`nav-item ${activePage === "dashboard" ? "active" : ""
-              }`}
-            onClick={() => setActivePage("dashboard")}
+            className={`nav-item ${
+              activePage === "dashboard"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              setActivePage("dashboard")
+            }
           >
             Dashboard
           </button>
 
           <button
-            className={`nav-item ${activePage === "products" ? "active" : ""
-              }`}
-            onClick={() => setActivePage("products")}
+            className={`nav-item ${
+              activePage === "products"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              setActivePage("products")
+            }
           >
             Products
           </button>
 
           <button
-            className={`nav-item ${activePage === "documents" ? "active" : ""
-              }`}
-            onClick={() => setActivePage("documents")}
+            className={`nav-item ${
+              activePage === "documents"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              setActivePage("documents")
+            }
           >
             Documents
           </button>
 
           <button
-            className={`nav-item ${activePage === "claims" ? "active" : ""
-              }`}
-            onClick={() => setActivePage("claims")}
+            className={`nav-item ${
+              activePage === "claims"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              setActivePage("claims")
+            }
           >
             Claims
           </button>
@@ -409,11 +516,18 @@ function App() {
 
         <div className="sidebar-bottom">
           <div className="privacy-card">
-            <span>Private by default</span>
-            <p>Your data stays on this device.</p>
+            <span>
+              Private by default
+            </span>
+
+            <p>
+              Your data stays on this device.
+            </p>
           </div>
         </div>
       </aside>
+
+      {/* Main content */}
 
       <main className="main-content">
         <header className="topbar">
@@ -422,20 +536,20 @@ function App() {
               {activePage === "dashboard"
                 ? "Dashboard"
                 : activePage === "products"
-                  ? "Products"
-                  : activePage === "documents"
-                    ? "Documents"
-                    : "Claims"}
+                ? "Products"
+                : activePage === "documents"
+                ? "Documents"
+                : "Claims"}
             </p>
 
             <h2>
               {activePage === "dashboard"
                 ? "Welcome to Warranty Tracker"
                 : activePage === "products"
-                  ? "Your products"
-                  : activePage === "documents"
-                    ? "Your documents"
-                    : "Your warranty claims"}
+                ? "Your products"
+                : activePage === "documents"
+                ? "Your documents"
+                : "Your warranty claims"}
             </h2>
           </div>
 
@@ -450,26 +564,37 @@ function App() {
         {renderPage()}
       </main>
 
-      {isAddProductOpen && (
-        <div className="modal-backdrop" onClick={closeAddProductModal}>
+      {/* Add/Edit Product Modal */}
+
+      {isProductModalOpen && (
+        <div
+          className="modal-backdrop"
+          onClick={closeProductModal}
+        >
           <div
             className="modal"
-            onClick={(event) => event.stopPropagation()}
+            onClick={(event) =>
+              event.stopPropagation()
+            }
           >
             <div className="modal-header">
               <div>
                 <p className="eyebrow">
-                  {editingProduct ? "Edit product" : "New product"}
+                  {editingProduct
+                    ? "Edit product"
+                    : "New product"}
                 </p>
 
                 <h3>
-                  {editingProduct ? "Edit product" : "Add a product"}
+                  {editingProduct
+                    ? "Edit product"
+                    : "Add a product"}
                 </h3>
               </div>
 
               <button
                 className="close-button"
-                onClick={closeAddProductModal}
+                onClick={closeProductModal}
                 aria-label="Close"
               >
                 ×
@@ -484,7 +609,10 @@ function App() {
               }
             >
               <div className="form-group">
-                <label htmlFor="name">Product name</label>
+                <label htmlFor="name">
+                  Product name
+                </label>
+
                 <input
                   id="name"
                   name="name"
@@ -497,7 +625,10 @@ function App() {
               </div>
 
               <div className="form-group">
-                <label htmlFor="brand">Brand</label>
+                <label htmlFor="brand">
+                  Brand
+                </label>
+
                 <input
                   id="brand"
                   name="brand"
@@ -505,11 +636,15 @@ function App() {
                   placeholder="e.g. Apple"
                   value={formData.brand}
                   onChange={handleInputChange}
+                  required
                 />
               </div>
 
               <div className="form-group">
-                <label htmlFor="model">Model</label>
+                <label htmlFor="model">
+                  Model
+                </label>
+
                 <input
                   id="model"
                   name="model"
@@ -521,7 +656,10 @@ function App() {
               </div>
 
               <div className="form-group">
-                <label htmlFor="purchaseDate">Purchase date</label>
+                <label htmlFor="purchaseDate">
+                  Purchase date
+                </label>
+
                 <input
                   id="purchaseDate"
                   name="purchaseDate"
@@ -535,18 +673,32 @@ function App() {
                 <button
                   type="button"
                   className="secondary-button"
-                  onClick={closeAddProductModal}
+                  onClick={closeProductModal}
                 >
                   Cancel
                 </button>
 
-                <button type="submit" className="primary-button">
-                  {editingProduct ? "Save Changes" : "Add Product"}
+                <button
+                  type="submit"
+                  className="primary-button"
+                >
+                  {editingProduct
+                    ? "Save Changes"
+                    : "Add Product"}
                 </button>
               </div>
             </form>
           </div>
         </div>
+      )}
+
+      {/* Add Warranty Modal */}
+
+      {warrantyProductId !== null && (
+        <AddWarrantyModal
+          productId={warrantyProductId}
+          onClose={closeWarrantyModal}
+        />
       )}
     </div>
   );
