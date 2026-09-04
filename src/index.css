@@ -806,3 +806,79 @@ button {
     flex-wrap: wrap;
   }
 }
+
+.documents-section {
+  margin-top: 48px;
+  margin-bottom: 40px;
+}
+
+.document-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.document-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px;
+  border: 1px solid #7E824D;
+  border-radius: 12px;
+  background: #ECECCD;
+}
+
+.document-card h4 {
+  margin: 0;
+  color: #17241A;
+  font-size: 16px;
+}
+
+.document-meta {
+  margin: 6px 0 0;
+  color: #7E824D;
+  font-size: 11px;
+}
+
+.document-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.selected-file {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: -4px;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #87B086;
+  color: #17241A;
+}
+
+.selected-file span {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.selected-file strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 700px) {
+  .document-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .document-actions {
+    width: 100%;
+  }
+}

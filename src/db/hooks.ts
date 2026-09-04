@@ -34,7 +34,37 @@ export function useProductWarranties(
       return db.warranties
         .where("productId")
         .equals(productId)
-        .toArray();
+        .sortBy("endDate");
+    },
+    [productId]
+  );
+}
+
+export function useDocuments() {
+  return useLiveQuery(
+    () =>
+      db.documents
+        .orderBy("createdAt")
+        .reverse()
+        .toArray(),
+    []
+  );
+}
+
+export function useProductDocuments(
+  productId?: number
+) {
+  return useLiveQuery(
+    () => {
+      if (!productId) {
+        return [];
+      }
+
+      return db.documents
+        .where("productId")
+        .equals(productId)
+        .reverse()
+        .sortBy("createdAt");
     },
     [productId]
   );

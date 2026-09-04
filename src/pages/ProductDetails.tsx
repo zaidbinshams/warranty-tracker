@@ -8,7 +8,10 @@ import {
   type Warranty,
 } from "../db/database";
 
-import { useProductWarranties } from "../db/hooks";
+import {
+  useProductDocuments,
+  useProductWarranties,
+} from "../db/hooks";
 
 import {
   getDaysRemaining,
@@ -16,6 +19,7 @@ import {
 } from "../utils/warranty";
 
 import AddWarrantyModal from "../components/AddWarrantyModal";
+import AddDocumentModal from "../components/AddDocumentModal";
 
 function ProductDetails() {
   const { productId } = useParams();
@@ -26,6 +30,9 @@ function ProductDetails() {
     useState<Warranty | null>(null);
 
   const [isWarrantyModalOpen, setIsWarrantyModalOpen] =
+    useState(false);
+
+  const [isDocumentModalOpen, setIsDocumentModalOpen] =
     useState(false);
 
   const product = useLiveQuery<Product | undefined>(
@@ -39,14 +46,20 @@ function ProductDetails() {
     [id]
   );
 
-  const warranties = useProductWarranties(id);
+  const warranties =
+    useProductWarranties(id);
+
+  const documents =
+    useProductDocuments(id);
 
   const openAddWarranty = () => {
     setEditingWarranty(null);
     setIsWarrantyModalOpen(true);
   };
 
-  const openEditWarranty = (warranty: Warranty) => {
+  const openEditWarranty = (
+    warranty: Warranty
+  ) => {
     setEditingWarranty(warranty);
     setIsWarrantyModalOpen(true);
   };
@@ -54,6 +67,14 @@ function ProductDetails() {
   const closeWarrantyModal = () => {
     setEditingWarranty(null);
     setIsWarrantyModalOpen(false);
+  };
+
+  const openDocumentModal = () => {
+    setIsDocumentModalOpen(true);
+  };
+
+  const closeDocumentModal = () => {
+    setIsDocumentModalOpen(false);
   };
 
   const handleDeleteWarranty = async (
@@ -68,6 +89,34 @@ function ProductDetails() {
     }
 
     await db.warranties.delete(warrantyId);
+  };
+
+  const handleDeleteDocument = async (
+    documentId: number
+  ) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this document?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    await db.documents.delete(documentId);
+  };
+
+  const openDocument = (document: {
+    file: Blob;
+  }) => {
+    const url = URL.createObjectURL(
+      document.file
+    );
+
+    window.open(url, "_blank");
+
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 10000);
   };
 
   if (!Number.isInteger(id)) {
@@ -96,8 +145,8 @@ function ProductDetails() {
           <h4>Product not found</h4>
 
           <p>
-            This product may have been deleted or
-            doesn't exist.
+            This product may have been deleted
+            or doesn't exist.
           </p>
 
           <Link
@@ -125,13 +174,16 @@ function ProductDetails() {
       <div className="product-detail-header">
         <div>
           <p className="eyebrow">
-            {product.brand || "Unknown brand"}
+            {product.brand ||
+              "Unknown brand"}
           </p>
 
           <h2>{product.name}</h2>
 
           <p className="detail-model">
-            Model: {product.model || "Not provided"}
+            Model:{" "}
+            {product.model ||
+              "Not provided"}
           </p>
         </div>
       </div>
@@ -166,7 +218,10 @@ function ProductDetails() {
       <section className="warranties-section">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Coverage</p>
+            <p className="eyebrow">
+              Coverage
+            </p>
+
             <h3>Warranties</h3>
           </div>
 
@@ -180,13 +235,18 @@ function ProductDetails() {
 
         {warranties?.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">+</div>
+            <div className="empty-icon">
+              +
+            </div>
 
-            <h4>No warranties added</h4>
+            <h4>
+              No warranties added
+            </h4>
 
             <p>
-              Add this product's warranty to start
-              tracking its coverage.
+              Add this product's warranty
+              to start tracking its
+              coverage.
             </p>
 
             <button
@@ -198,108 +258,225 @@ function ProductDetails() {
           </div>
         ) : (
           <div className="warranty-list">
-            {warranties?.map((warranty) => {
-              const status = getWarrantyStatus(
-                warranty.endDate
-              );
+            {warranties?.map(
+              (warranty) => {
+                const status =
+                  getWarrantyStatus(
+                    warranty.endDate
+                  );
 
-              const daysRemaining =
-                getDaysRemaining(
-                  warranty.endDate
+                const daysRemaining =
+                  getDaysRemaining(
+                    warranty.endDate
+                  );
+
+                return (
+                  <article
+                    className="warranty-card"
+                    key={warranty.id}
+                  >
+                    <div className="warranty-header">
+                      <div>
+                        <p className="product-brand">
+                          {warranty.type}
+                        </p>
+
+                        <h4>
+                          {warranty.provider}
+                        </h4>
+                      </div>
+
+                      <span
+                        className={`warranty-status ${status}`}
+                      >
+                        {status}
+                      </span>
+                    </div>
+
+                    <div className="warranty-dates">
+                      <div>
+                        <span>
+                          Start
+                        </span>
+
+                        <strong>
+                          {
+                            warranty.startDate
+                          }
+                        </strong>
+                      </div>
+
+                      <div>
+                        <span>
+                          End
+                        </span>
+
+                        <strong>
+                          {
+                            warranty.endDate
+                          }
+                        </strong>
+                      </div>
+
+                      <div>
+                        <span>
+                          Remaining
+                        </span>
+
+                        <strong>
+                          {daysRemaining >
+                          0
+                            ? `${daysRemaining} days`
+                            : "Expired"}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {warranty.coverage && (
+                      <div className="warranty-description">
+                        <p className="detail-label">
+                          Coverage
+                        </p>
+
+                        <p>
+                          {
+                            warranty.coverage
+                          }
+                        </p>
+                      </div>
+                    )}
+
+                    {warranty.exclusions && (
+                      <div className="warranty-description">
+                        <p className="detail-label">
+                          Exclusions
+                        </p>
+
+                        <p>
+                          {
+                            warranty.exclusions
+                          }
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="warranty-actions">
+                      <button
+                        className="secondary-button"
+                        onClick={() =>
+                          openEditWarranty(
+                            warranty
+                          )
+                        }
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        className="delete-button"
+                        onClick={() =>
+                          handleDeleteWarranty(
+                            warranty.id!
+                          )
+                        }
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </article>
                 );
+              }
+            )}
+          </div>
+        )}
+      </section>
 
-              return (
+      {/* Documents */}
+
+      <section className="documents-section">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">
+              Files
+            </p>
+
+            <h3>Documents</h3>
+          </div>
+
+          <button
+            className="primary-button"
+            onClick={openDocumentModal}
+          >
+            Add Document
+          </button>
+        </div>
+
+        {documents?.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-icon">
+              +
+            </div>
+
+            <h4>
+              No documents added
+            </h4>
+
+            <p>
+              Upload receipts, warranty
+              cards, manuals, or service
+              documents for this product.
+            </p>
+
+            <button
+              className="primary-button"
+              onClick={openDocumentModal}
+            >
+              Add Document
+            </button>
+          </div>
+        ) : (
+          <div className="document-list">
+            {documents?.map(
+              (document) => (
                 <article
-                  className="warranty-card"
-                  key={warranty.id}
+                  className="document-card"
+                  key={document.id}
                 >
-                  <div className="warranty-header">
-                    <div>
-                      <p className="product-brand">
-                        {warranty.type}
-                      </p>
+                  <div>
+                    <p className="product-brand">
+                      {document.type}
+                    </p>
 
-                      <h4>
-                        {warranty.provider}
-                      </h4>
-                    </div>
+                    <h4>
+                      {document.name}
+                    </h4>
 
-                    <span
-                      className={`warranty-status ${status}`}
-                    >
-                      {status}
-                    </span>
+                    <p className="document-meta">
+                      {(
+                        document.size /
+                        1024
+                      ).toFixed(1)}{" "}
+                      KB
+                    </p>
                   </div>
 
-                  <div className="warranty-dates">
-                    <div>
-                      <span>Start</span>
-
-                      <strong>
-                        {warranty.startDate}
-                      </strong>
-                    </div>
-
-                    <div>
-                      <span>End</span>
-
-                      <strong>
-                        {warranty.endDate}
-                      </strong>
-                    </div>
-
-                    <div>
-                      <span>Remaining</span>
-
-                      <strong>
-                        {daysRemaining > 0
-                          ? `${daysRemaining} days`
-                          : "Expired"}
-                      </strong>
-                    </div>
-                  </div>
-
-                  {warranty.coverage && (
-                    <div className="warranty-description">
-                      <p className="detail-label">
-                        Coverage
-                      </p>
-
-                      <p>
-                        {warranty.coverage}
-                      </p>
-                    </div>
-                  )}
-
-                  {warranty.exclusions && (
-                    <div className="warranty-description">
-                      <p className="detail-label">
-                        Exclusions
-                      </p>
-
-                      <p>
-                        {warranty.exclusions}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Warranty actions */}
-
-                  <div className="warranty-actions">
+                  <div className="document-actions">
                     <button
                       className="secondary-button"
                       onClick={() =>
-                        openEditWarranty(warranty)
+                        openDocument(
+                          document
+                        )
                       }
                     >
-                      Edit
+                      Open
                     </button>
 
                     <button
                       className="delete-button"
                       onClick={() =>
-                        handleDeleteWarranty(
-                          warranty.id!
+                        handleDeleteDocument(
+                          document.id!
                         )
                       }
                     >
@@ -307,8 +484,8 @@ function ProductDetails() {
                     </button>
                   </div>
                 </article>
-              );
-            })}
+              )
+            )}
           </div>
         )}
       </section>
@@ -319,9 +496,23 @@ function ProductDetails() {
         <AddWarrantyModal
           productId={id}
           warranty={
-            editingWarranty ?? undefined
+            editingWarranty ??
+            undefined
           }
-          onClose={closeWarrantyModal}
+          onClose={
+            closeWarrantyModal
+          }
+        />
+      )}
+
+      {/* Document modal */}
+
+      {isDocumentModalOpen && (
+        <AddDocumentModal
+          productId={id}
+          onClose={
+            closeDocumentModal
+          }
         />
       )}
     </section>
