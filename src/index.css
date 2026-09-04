@@ -97,12 +97,14 @@ button {
 }
 
 .nav-item {
+  display: block;
   width: 100%;
   padding: 12px 14px;
   border-radius: 8px;
   background: #17241A;
   color: #ECECCD;
   text-align: left;
+  text-decoration: none;
   font-size: 14px;
   font-weight: 500;
 }

@@ -1,450 +1,12 @@
-import { useState } from "react";
-import type { ChangeEvent, FormEvent } from "react";
+import { NavLink, Route, Routes } from "react-router-dom";
 
-import { db, type Product } from "./db/database";
-import {
-  useProducts,
-  useWarranties,
-} from "./db/hooks";
-import {
-  getWarrantyStatus,
-} from "./utils/warranty";
-import AddWarrantyModal from "./components/AddWarrantyModal";
-
-type Page = "dashboard" | "products" | "documents" | "claims";
+import Dashboard from "./pages/Dashboard";
+import Products from "./pages/Products";
+import ProductDetails from "./pages/ProductDetails";
 
 function App() {
-  const products = useProducts();
-  const warranties = useWarranties();
-
-  const [activePage, setActivePage] =
-    useState<Page>("dashboard");
-
-  const [isProductModalOpen, setIsProductModalOpen] =
-    useState(false);
-
-  const [editingProduct, setEditingProduct] =
-    useState<Product | null>(null);
-
-  const [warrantyProductId, setWarrantyProductId] =
-    useState<number | null>(null);
-
-  const [formData, setFormData] = useState({
-    name: "",
-    brand: "",
-    model: "",
-    purchaseDate: "",
-  });
-
-  /* --------------------------------
-     Derived dashboard values
-  -------------------------------- */
-
-  const productCount = products?.length ?? 0;
-
-  const activeWarrantyCount =
-    warranties?.filter(
-      (warranty) =>
-        getWarrantyStatus(warranty.endDate) === "active"
-    ).length ?? 0;
-
-  const expiringWarrantyCount =
-    warranties?.filter(
-      (warranty) =>
-        getWarrantyStatus(warranty.endDate) === "expiring"
-    ).length ?? 0;
-
-  const expiredWarrantyCount =
-    warranties?.filter(
-      (warranty) =>
-        getWarrantyStatus(warranty.endDate) === "expired"
-    ).length ?? 0;
-
-  /* --------------------------------
-     Product form
-  -------------------------------- */
-
-  const handleInputChange = (
-    event: ChangeEvent<HTMLInputElement>
-  ) => {
-    const { name, value } = event.target;
-
-    setFormData((current) => ({
-      ...current,
-      [name]: value,
-    }));
-  };
-
-  const resetProductForm = () => {
-    setFormData({
-      name: "",
-      brand: "",
-      model: "",
-      purchaseDate: "",
-    });
-  };
-
-  const openAddProductModal = () => {
-    setEditingProduct(null);
-    resetProductForm();
-    setIsProductModalOpen(true);
-  };
-
-  const closeProductModal = () => {
-    setIsProductModalOpen(false);
-    setEditingProduct(null);
-    resetProductForm();
-  };
-
-  const handleAddProduct = async (
-    event: FormEvent<HTMLFormElement>
-  ) => {
-    event.preventDefault();
-
-    const now = new Date().toISOString();
-
-    const product: Product = {
-      name: formData.name.trim(),
-      brand: formData.brand.trim(),
-      model: formData.model.trim(),
-      purchaseDate: formData.purchaseDate,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    await db.products.add(product);
-
-    closeProductModal();
-    setActivePage("products");
-  };
-
-  const openEditProduct = (product: Product) => {
-    setEditingProduct(product);
-
-    setFormData({
-      name: product.name,
-      brand: product.brand,
-      model: product.model,
-      purchaseDate: product.purchaseDate,
-    });
-
-    setIsProductModalOpen(true);
-  };
-
-  const handleEditProduct = async (
-    event: FormEvent<HTMLFormElement>
-  ) => {
-    event.preventDefault();
-
-    if (!editingProduct?.id) {
-      return;
-    }
-
-    await db.products.update(editingProduct.id, {
-      name: formData.name.trim(),
-      brand: formData.brand.trim(),
-      model: formData.model.trim(),
-      purchaseDate: formData.purchaseDate,
-      updatedAt: new Date().toISOString(),
-    });
-
-    closeProductModal();
-  };
-
-  const handleDeleteProduct = async (id: number) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this product?"
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    await db.products.delete(id);
-  };
-
-  /* --------------------------------
-     Warranty modal
-  -------------------------------- */
-
-  const openWarrantyModal = (productId: number) => {
-    setWarrantyProductId(productId);
-  };
-
-  const closeWarrantyModal = () => {
-    setWarrantyProductId(null);
-  };
-
-  /* --------------------------------
-     Page rendering
-  -------------------------------- */
-
-  const renderProductCard = (product: Product) => {
-    return (
-      <article
-        className="product-card"
-        key={product.id}
-      >
-        <div className="product-information">
-          <p className="product-brand">
-            {product.brand || "Unknown brand"}
-          </p>
-
-          <h4>{product.name}</h4>
-
-          <p className="product-model">
-            Model: {product.model || "Not provided"}
-          </p>
-        </div>
-
-        <div className="product-date">
-          <span>Purchased</span>
-
-          <strong>
-            {product.purchaseDate || "Not provided"}
-          </strong>
-        </div>
-
-        <div className="product-actions">
-          <button
-            className="primary-button"
-            onClick={() =>
-              openWarrantyModal(product.id!)
-            }
-          >
-            Add Warranty
-          </button>
-
-          <button
-            className="secondary-button"
-            onClick={() =>
-              openEditProduct(product)
-            }
-          >
-            Edit
-          </button>
-
-          <button
-            className="delete-button"
-            onClick={() =>
-              handleDeleteProduct(product.id!)
-            }
-          >
-            Delete
-          </button>
-        </div>
-      </article>
-    );
-  };
-
-  const renderPage = () => {
-    switch (activePage) {
-      case "products":
-        return (
-          <section className="page-section">
-            <div className="section-heading">
-              <div>
-                <p className="eyebrow">Products</p>
-                <h3>Your products</h3>
-              </div>
-
-              <button
-                className="primary-button"
-                onClick={openAddProductModal}
-              >
-                Add Product
-              </button>
-            </div>
-
-            {productCount === 0 ? (
-              <div className="empty-state">
-                <div className="empty-icon">+</div>
-
-                <h4>No products yet</h4>
-
-                <p>
-                  Add your first product to start
-                  tracking its warranty, documents,
-                  and service history.
-                </p>
-
-                <button
-                  className="primary-button"
-                  onClick={openAddProductModal}
-                >
-                  Add your first product
-                </button>
-              </div>
-            ) : (
-              <div className="product-list">
-                {products?.map(renderProductCard)}
-              </div>
-            )}
-          </section>
-        );
-
-      case "documents":
-        return (
-          <section className="page-section">
-            <div className="section-heading">
-              <div>
-                <p className="eyebrow">Documents</p>
-                <h3>Your documents</h3>
-              </div>
-            </div>
-
-            <div className="empty-state">
-              <div className="empty-icon">+</div>
-
-              <h4>No documents yet</h4>
-
-              <p>
-                Receipts, warranty cards, manuals,
-                and service documents will appear here.
-              </p>
-            </div>
-          </section>
-        );
-
-      case "claims":
-        return (
-          <section className="page-section">
-            <div className="section-heading">
-              <div>
-                <p className="eyebrow">Claims</p>
-                <h3>Warranty claims</h3>
-              </div>
-            </div>
-
-            <div className="empty-state">
-              <div className="empty-icon">+</div>
-
-              <h4>No claims yet</h4>
-
-              <p>
-                Warranty claims and their progress
-                will appear here.
-              </p>
-            </div>
-          </section>
-        );
-
-      case "dashboard":
-      default:
-        return (
-          <>
-            <section className="overview">
-              <div className="section-heading">
-                <div>
-                  <p className="eyebrow">Overview</p>
-                  <h3>Your warranty status</h3>
-                </div>
-              </div>
-
-              <div className="stats-grid">
-                <div className="stat-card green-card">
-                  <p>Products</p>
-
-                  <strong>
-                    {productCount}
-                  </strong>
-
-                  <span>
-                    Tracked products
-                  </span>
-                </div>
-
-                <div className="stat-card blue-card">
-                  <p>Active Warranties</p>
-
-                  <strong>
-                    {activeWarrantyCount}
-                  </strong>
-
-                  <span>
-                    Currently covered
-                  </span>
-                </div>
-
-                <div className="stat-card light-card">
-                  <p>Expiring Soon</p>
-
-                  <strong>
-                    {expiringWarrantyCount}
-                  </strong>
-
-                  <span>
-                    Within 30 days
-                  </span>
-                </div>
-
-                <div className="stat-card dark-card">
-                  <p>Expired</p>
-
-                  <strong>
-                    {expiredWarrantyCount}
-                  </strong>
-
-                  <span>
-                    Needs attention
-                  </span>
-                </div>
-              </div>
-            </section>
-
-            <section className="products-section">
-              <div className="section-heading">
-                <div>
-                  <p className="eyebrow">Products</p>
-                  <h3>Recent products</h3>
-                </div>
-
-                <button
-                  className="secondary-button"
-                  onClick={() =>
-                    setActivePage("products")
-                  }
-                >
-                  View all
-                </button>
-              </div>
-
-              {productCount === 0 ? (
-                <div className="empty-state">
-                  <div className="empty-icon">+</div>
-
-                  <h4>No products yet</h4>
-
-                  <p>
-                    Add your first product to start
-                    tracking its warranty, documents,
-                    and service history.
-                  </p>
-
-                  <button
-                    className="primary-button"
-                    onClick={openAddProductModal}
-                  >
-                    Add your first product
-                  </button>
-                </div>
-              ) : (
-                <div className="product-list">
-                  {products
-                    ?.slice(0, 3)
-                    .map(renderProductCard)}
-                </div>
-              )}
-            </section>
-          </>
-        );
-    }
-  };
-
   return (
     <div className="app">
-      {/* Sidebar */}
-
       <aside className="sidebar">
         <div className="brand">
           <div className="brand-mark">
@@ -453,253 +15,99 @@ function App() {
 
           <div>
             <h1>Warranty Tracker</h1>
-
-            <p>
-              Your products, protected.
-            </p>
+            <p>Your products, protected.</p>
           </div>
         </div>
 
         <nav className="navigation">
-          <button
-            className={`nav-item ${
-              activePage === "dashboard"
-                ? "active"
-                : ""
-            }`}
-            onClick={() =>
-              setActivePage("dashboard")
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) =>
+              `nav-item ${isActive ? "active" : ""}`
             }
           >
             Dashboard
-          </button>
+          </NavLink>
 
-          <button
-            className={`nav-item ${
-              activePage === "products"
-                ? "active"
-                : ""
-            }`}
-            onClick={() =>
-              setActivePage("products")
+          <NavLink
+            to="/products"
+            className={({ isActive }) =>
+              `nav-item ${isActive ? "active" : ""}`
             }
           >
             Products
-          </button>
+          </NavLink>
 
-          <button
-            className={`nav-item ${
-              activePage === "documents"
-                ? "active"
-                : ""
-            }`}
-            onClick={() =>
-              setActivePage("documents")
+          <NavLink
+            to="/documents"
+            className={({ isActive }) =>
+              `nav-item ${isActive ? "active" : ""}`
             }
           >
             Documents
-          </button>
+          </NavLink>
 
-          <button
-            className={`nav-item ${
-              activePage === "claims"
-                ? "active"
-                : ""
-            }`}
-            onClick={() =>
-              setActivePage("claims")
+          <NavLink
+            to="/claims"
+            className={({ isActive }) =>
+              `nav-item ${isActive ? "active" : ""}`
             }
           >
             Claims
-          </button>
+          </NavLink>
         </nav>
 
         <div className="sidebar-bottom">
           <div className="privacy-card">
-            <span>
-              Private by default
-            </span>
-
-            <p>
-              Your data stays on this device.
-            </p>
+            <span>Private by default</span>
+            <p>Your data stays on this device.</p>
           </div>
         </div>
       </aside>
 
-      {/* Main content */}
-
       <main className="main-content">
-        <header className="topbar">
-          <div>
-            <p className="eyebrow">
-              {activePage === "dashboard"
-                ? "Dashboard"
-                : activePage === "products"
-                ? "Products"
-                : activePage === "documents"
-                ? "Documents"
-                : "Claims"}
-            </p>
+        <Routes>
+          <Route
+            path="/"
+            element={<Dashboard />}
+          />
 
-            <h2>
-              {activePage === "dashboard"
-                ? "Welcome to Warranty Tracker"
-                : activePage === "products"
-                ? "Your products"
-                : activePage === "documents"
-                ? "Your documents"
-                : "Your warranty claims"}
-            </h2>
-          </div>
+          <Route
+            path="/products"
+            element={<Products />}
+          />
 
-          <button
-            className="primary-button"
-            onClick={openAddProductModal}
-          >
-            Add Product
-          </button>
-        </header>
+          <Route
+            path="/products/:productId"
+            element={<ProductDetails />}
+          />
 
-        {renderPage()}
-      </main>
-
-      {/* Add/Edit Product Modal */}
-
-      {isProductModalOpen && (
-        <div
-          className="modal-backdrop"
-          onClick={closeProductModal}
-        >
-          <div
-            className="modal"
-            onClick={(event) =>
-              event.stopPropagation()
-            }
-          >
-            <div className="modal-header">
-              <div>
-                <p className="eyebrow">
-                  {editingProduct
-                    ? "Edit product"
-                    : "New product"}
+          <Route
+            path="/documents"
+            element={
+              <div className="page-section">
+                <h1>Documents</h1>
+                <p>
+                  Your documents will appear here.
                 </p>
-
-                <h3>
-                  {editingProduct
-                    ? "Edit product"
-                    : "Add a product"}
-                </h3>
               </div>
+            }
+          />
 
-              <button
-                className="close-button"
-                onClick={closeProductModal}
-                aria-label="Close"
-              >
-                ×
-              </button>
-            </div>
-
-            <form
-              onSubmit={
-                editingProduct
-                  ? handleEditProduct
-                  : handleAddProduct
-              }
-            >
-              <div className="form-group">
-                <label htmlFor="name">
-                  Product name
-                </label>
-
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  placeholder="e.g. MacBook Air"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  required
-                />
+          <Route
+            path="/claims"
+            element={
+              <div className="page-section">
+                <h1>Claims</h1>
+                <p>
+                  Your warranty claims will appear here.
+                </p>
               </div>
-
-              <div className="form-group">
-                <label htmlFor="brand">
-                  Brand
-                </label>
-
-                <input
-                  id="brand"
-                  name="brand"
-                  type="text"
-                  placeholder="e.g. Apple"
-                  value={formData.brand}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="model">
-                  Model
-                </label>
-
-                <input
-                  id="model"
-                  name="model"
-                  type="text"
-                  placeholder="e.g. A3113"
-                  value={formData.model}
-                  onChange={handleInputChange}
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="purchaseDate">
-                  Purchase date
-                </label>
-
-                <input
-                  id="purchaseDate"
-                  name="purchaseDate"
-                  type="date"
-                  value={formData.purchaseDate}
-                  onChange={handleInputChange}
-                />
-              </div>
-
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={closeProductModal}
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  className="primary-button"
-                >
-                  {editingProduct
-                    ? "Save Changes"
-                    : "Add Product"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Add Warranty Modal */}
-
-      {warrantyProductId !== null && (
-        <AddWarrantyModal
-          productId={warrantyProductId}
-          onClose={closeWarrantyModal}
-        />
-      )}
+            }
+          />
+        </Routes>
+      </main>
     </div>
   );
 }
