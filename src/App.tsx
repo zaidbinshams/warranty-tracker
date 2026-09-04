@@ -3,6 +3,7 @@ import { NavLink, Route, Routes } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import Products from "./pages/Products";
 import ProductDetails from "./pages/ProductDetails";
+import Documents from "./pages/Documents";
 
 function App() {
   return (
@@ -84,16 +85,9 @@ function App() {
           />
 
           <Route
-            path="/documents"
-            element={
-              <div className="page-section">
-                <h1>Documents</h1>
-                <p>
-                  Your documents will appear here.
-                </p>
-              </div>
-            }
-          />
+  path="/documents"
+  element={<Documents />}
+/>
 
           <Route
             path="/claims"

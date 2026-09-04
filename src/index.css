@@ -882,3 +882,67 @@ button {
     width: 100%;
   }
 }
+
+.document-toolbar {
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 16px;
+  margin-top: 24px;
+  margin-bottom: 20px;
+}
+
+.document-search,
+.document-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.document-search label,
+.document-filter label {
+  color: #17241A;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.document-search input,
+.document-filter select {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid #7E824D;
+  border-radius: 8px;
+  outline: none;
+  background: #ECECCD;
+  color: #17241A;
+  font-size: 13px;
+}
+
+.document-search input:focus,
+.document-filter select:focus {
+  border-color: #87B086;
+  outline: 2px solid #87B086;
+  outline-offset: 1px;
+}
+
+.document-search input::placeholder {
+  color: #7E824D;
+}
+
+.document-information {
+  min-width: 0;
+}
+
+.document-information h4 {
+  overflow: hidden;
+  margin: 0;
+  color: #17241A;
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+  .document-toolbar {
+    grid-template-columns: 1fr;
+  }
+}
