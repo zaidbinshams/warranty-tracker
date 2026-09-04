@@ -1,21 +1,28 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type {
   ChangeEvent,
   FormEvent,
 } from "react";
 
-import { db } from "../db/database";
+import {
+  db,
+  type Warranty,
+} from "../db/database";
 import { addMonths } from "../utils/date";
 
 type Props = {
   productId: number;
+  warranty?: Warranty;
   onClose: () => void;
 };
 
 function AddWarrantyModal({
   productId,
+  warranty,
   onClose,
 }: Props) {
+  const isEditing = Boolean(warranty);
+
   const [formData, setFormData] = useState({
     provider: "",
     type: "manufacturer",
@@ -24,6 +31,32 @@ function AddWarrantyModal({
     coverage: "",
     exclusions: "",
   });
+
+  useEffect(() => {
+    if (warranty) {
+      setFormData({
+        provider: warranty.provider,
+        type: warranty.type,
+        startDate: warranty.startDate,
+        durationMonths: String(
+          warranty.durationMonths
+        ),
+        coverage: warranty.coverage,
+        exclusions: warranty.exclusions,
+      });
+
+      return;
+    }
+
+    setFormData({
+      provider: "",
+      type: "manufacturer",
+      startDate: "",
+      durationMonths: "",
+      coverage: "",
+      exclusions: "",
+    });
+  }, [warranty]);
 
   const handleChange = (
     event: ChangeEvent<
@@ -40,12 +73,15 @@ function AddWarrantyModal({
     }));
   };
 
+  const durationMonths =
+    Number(formData.durationMonths);
+
   const endDate =
     formData.startDate &&
-    Number(formData.durationMonths) > 0
+    durationMonths > 0
       ? addMonths(
           formData.startDate,
-          Number(formData.durationMonths)
+          durationMonths
         )
       : "";
 
@@ -53,9 +89,6 @@ function AddWarrantyModal({
     event: FormEvent<HTMLFormElement>
   ) => {
     event.preventDefault();
-
-    const durationMonths =
-      Number(formData.durationMonths);
 
     if (
       !formData.startDate ||
@@ -67,9 +100,8 @@ function AddWarrantyModal({
 
     const now = new Date().toISOString();
 
-    await db.warranties.add({
+    const warrantyData = {
       productId,
-
       provider: formData.provider.trim(),
 
       type: formData.type as
@@ -79,19 +111,25 @@ function AddWarrantyModal({
         | "other",
 
       startDate: formData.startDate,
-
       durationMonths,
-
       endDate,
 
       coverage: formData.coverage.trim(),
-
-      exclusions:
-        formData.exclusions.trim(),
-
-      createdAt: now,
+      exclusions: formData.exclusions.trim(),
       updatedAt: now,
-    });
+    };
+
+    if (isEditing && warranty?.id) {
+      await db.warranties.update(
+        warranty.id,
+        warrantyData
+      );
+    } else {
+      await db.warranties.add({
+        ...warrantyData,
+        createdAt: now,
+      });
+    }
 
     onClose();
   };
@@ -113,7 +151,11 @@ function AddWarrantyModal({
               Warranty
             </p>
 
-            <h3>Add warranty</h3>
+            <h3>
+              {isEditing
+                ? "Edit warranty"
+                : "Add warranty"}
+            </h3>
           </div>
 
           <button
@@ -293,7 +335,9 @@ function AddWarrantyModal({
               type="submit"
               className="primary-button"
             >
-              Add Warranty
+              {isEditing
+                ? "Save Changes"
+                : "Add Warranty"}
             </button>
           </div>
         </form>

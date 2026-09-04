@@ -1,16 +1,32 @@
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { useProductWarranties } from "../db/hooks";
-import { db, type Product } from "../db/database";
 import { useLiveQuery } from "dexie-react-hooks";
+
+import {
+  db,
+  type Product,
+  type Warranty,
+} from "../db/database";
+
+import { useProductWarranties } from "../db/hooks";
+
 import {
   getDaysRemaining,
   getWarrantyStatus,
 } from "../utils/warranty";
 
+import AddWarrantyModal from "../components/AddWarrantyModal";
+
 function ProductDetails() {
   const { productId } = useParams();
 
   const id = Number(productId);
+
+  const [editingWarranty, setEditingWarranty] =
+    useState<Warranty | null>(null);
+
+  const [isWarrantyModalOpen, setIsWarrantyModalOpen] =
+    useState(false);
 
   const product = useLiveQuery<Product | undefined>(
     () => {
@@ -24,6 +40,35 @@ function ProductDetails() {
   );
 
   const warranties = useProductWarranties(id);
+
+  const openAddWarranty = () => {
+    setEditingWarranty(null);
+    setIsWarrantyModalOpen(true);
+  };
+
+  const openEditWarranty = (warranty: Warranty) => {
+    setEditingWarranty(warranty);
+    setIsWarrantyModalOpen(true);
+  };
+
+  const closeWarrantyModal = () => {
+    setEditingWarranty(null);
+    setIsWarrantyModalOpen(false);
+  };
+
+  const handleDeleteWarranty = async (
+    warrantyId: number
+  ) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this warranty?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    await db.warranties.delete(warrantyId);
+  };
 
   if (!Number.isInteger(id)) {
     return (
@@ -75,6 +120,8 @@ function ProductDetails() {
         ← Back to Products
       </Link>
 
+      {/* Product header */}
+
       <div className="product-detail-header">
         <div>
           <p className="eyebrow">
@@ -88,6 +135,8 @@ function ProductDetails() {
           </p>
         </div>
       </div>
+
+      {/* Product overview */}
 
       <div className="detail-grid">
         <div className="detail-card">
@@ -112,12 +161,21 @@ function ProductDetails() {
         </div>
       </div>
 
+      {/* Warranties */}
+
       <section className="warranties-section">
         <div className="section-heading">
           <div>
             <p className="eyebrow">Coverage</p>
             <h3>Warranties</h3>
           </div>
+
+          <button
+            className="primary-button"
+            onClick={openAddWarranty}
+          >
+            Add Warranty
+          </button>
         </div>
 
         {warranties?.length === 0 ? (
@@ -130,6 +188,13 @@ function ProductDetails() {
               Add this product's warranty to start
               tracking its coverage.
             </p>
+
+            <button
+              className="primary-button"
+              onClick={openAddWarranty}
+            >
+              Add Warranty
+            </button>
           </div>
         ) : (
           <div className="warranty-list">
@@ -169,6 +234,7 @@ function ProductDetails() {
                   <div className="warranty-dates">
                     <div>
                       <span>Start</span>
+
                       <strong>
                         {warranty.startDate}
                       </strong>
@@ -176,6 +242,7 @@ function ProductDetails() {
 
                     <div>
                       <span>End</span>
+
                       <strong>
                         {warranty.endDate}
                       </strong>
@@ -183,6 +250,7 @@ function ProductDetails() {
 
                     <div>
                       <span>Remaining</span>
+
                       <strong>
                         {daysRemaining > 0
                           ? `${daysRemaining} days`
@@ -214,12 +282,48 @@ function ProductDetails() {
                       </p>
                     </div>
                   )}
+
+                  {/* Warranty actions */}
+
+                  <div className="warranty-actions">
+                    <button
+                      className="secondary-button"
+                      onClick={() =>
+                        openEditWarranty(warranty)
+                      }
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      className="delete-button"
+                      onClick={() =>
+                        handleDeleteWarranty(
+                          warranty.id!
+                        )
+                      }
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </article>
               );
             })}
           </div>
         )}
       </section>
+
+      {/* Warranty modal */}
+
+      {isWarrantyModalOpen && (
+        <AddWarrantyModal
+          productId={id}
+          warranty={
+            editingWarranty ?? undefined
+          }
+          onClose={closeWarrantyModal}
+        />
+      )}
     </section>
   );
 }

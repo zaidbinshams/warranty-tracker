@@ -792,3 +792,17 @@ button {
 .calculated-date strong {
   font-size: 13px;
 }
+
+.warranty-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+@media (max-width: 600px) {
+  .warranty-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
