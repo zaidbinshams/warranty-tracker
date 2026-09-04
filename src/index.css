@@ -946,3 +946,19 @@ button {
     grid-template-columns: 1fr;
   }
 }
+
+.file-error {
+  margin-top: -4px;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #7E824D;
+  color: #ECECCD;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.selected-file small {
+  color: #7E824D;
+  font-size: 11px;
+}

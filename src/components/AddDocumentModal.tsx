@@ -9,6 +9,11 @@ import {
   type DocumentType,
 } from "../db/database";
 
+import {
+  validateFile,
+  formatFileSize,
+} from "../utils/files";
+
 type Props = {
   productId: number;
   onClose: () => void;
@@ -24,6 +29,9 @@ function AddDocumentModal({
   const [type, setType] =
     useState<DocumentType>("receipt");
 
+  const [error, setError] =
+    useState<string>("");
+
   const [isSaving, setIsSaving] =
     useState(false);
 
@@ -32,6 +40,22 @@ function AddDocumentModal({
   ) => {
     const selectedFile =
       event.target.files?.[0] ?? null;
+
+    setError("");
+
+    if (!selectedFile) {
+      setFile(null);
+      return;
+    }
+
+    const validationError =
+      validateFile(selectedFile);
+
+    if (validationError) {
+      setFile(null);
+      setError(validationError);
+      return;
+    }
 
     setFile(selectedFile);
   };
@@ -42,30 +66,40 @@ function AddDocumentModal({
     event.preventDefault();
 
     if (!file) {
+      setError(
+        "Please select a valid document."
+      );
+      return;
+    }
+
+    const validationError =
+      validateFile(file);
+
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
     setIsSaving(true);
+    setError("");
 
     try {
       await db.documents.add({
         productId,
-
         name: file.name,
-
         type,
-
         mimeType: file.type,
-
         size: file.size,
-
         file,
-
         createdAt:
           new Date().toISOString(),
       });
 
       onClose();
+    } catch {
+      setError(
+        "The document could not be saved. Please try again."
+      );
     } finally {
       setIsSaving(false);
     }
@@ -112,7 +146,8 @@ function AddDocumentModal({
               value={type}
               onChange={(event) =>
                 setType(
-                  event.target.value as DocumentType
+                  event.target
+                    .value as DocumentType
                 )
               }
             >
@@ -146,17 +181,33 @@ function AddDocumentModal({
             <input
               id="document-file"
               type="file"
-              accept=".pdf,image/*"
+              accept=".pdf,.png,.jpg,.jpeg,.webp"
               onChange={handleFileChange}
               required
             />
           </div>
 
-          {file && (
-            <div className="selected-file">
-              <span>Selected file</span>
+          {error && (
+            <div className="file-error">
+              {error}
+            </div>
+          )}
 
-              <strong>{file.name}</strong>
+          {file && !error && (
+            <div className="selected-file">
+              <span>
+                Selected file
+              </span>
+
+              <strong>
+                {file.name}
+              </strong>
+
+              <small>
+                {formatFileSize(
+                  file.size
+                )}
+              </small>
             </div>
           )}
 
@@ -173,7 +224,11 @@ function AddDocumentModal({
             <button
               type="submit"
               className="primary-button"
-              disabled={!file || isSaving}
+              disabled={
+                !file ||
+                Boolean(error) ||
+                isSaving
+              }
             >
               {isSaving
                 ? "Saving..."
