@@ -770,3 +770,25 @@ button {
     flex-direction: column;
   }
 }
+
+.calculated-date {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: -4px;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #87B086;
+  color: #17241A;
+}
+
+.calculated-date span {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.calculated-date strong {
+  font-size: 13px;
+}

@@ -1,5 +1,11 @@
 import { useState } from "react";
+import type {
+  ChangeEvent,
+  FormEvent,
+} from "react";
+
 import { db } from "../db/database";
+import { addMonths } from "../utils/date";
 
 type Props = {
   productId: number;
@@ -14,14 +20,16 @@ function AddWarrantyModal({
     provider: "",
     type: "manufacturer",
     startDate: "",
-    endDate: "",
+    durationMonths: "",
     coverage: "",
     exclusions: "",
   });
 
   const handleChange = (
-    event: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    event: ChangeEvent<
+      HTMLInputElement |
+        HTMLSelectElement |
+        HTMLTextAreaElement
     >
   ) => {
     const { name, value } = event.target;
@@ -32,25 +40,55 @@ function AddWarrantyModal({
     }));
   };
 
+  const endDate =
+    formData.startDate &&
+    Number(formData.durationMonths) > 0
+      ? addMonths(
+          formData.startDate,
+          Number(formData.durationMonths)
+        )
+      : "";
+
   const handleSubmit = async (
-    event: React.FormEvent<HTMLFormElement>
+    event: FormEvent<HTMLFormElement>
   ) => {
     event.preventDefault();
+
+    const durationMonths =
+      Number(formData.durationMonths);
+
+    if (
+      !formData.startDate ||
+      !durationMonths ||
+      durationMonths <= 0
+    ) {
+      return;
+    }
 
     const now = new Date().toISOString();
 
     await db.warranties.add({
       productId,
+
       provider: formData.provider.trim(),
+
       type: formData.type as
         | "manufacturer"
         | "seller"
         | "extended"
         | "other",
+
       startDate: formData.startDate,
-      endDate: formData.endDate,
+
+      durationMonths,
+
+      endDate,
+
       coverage: formData.coverage.trim(),
-      exclusions: formData.exclusions.trim(),
+
+      exclusions:
+        formData.exclusions.trim(),
+
       createdAt: now,
       updatedAt: now,
     });
@@ -59,14 +97,22 @@ function AddWarrantyModal({
   };
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div
+      className="modal-backdrop"
+      onClick={onClose}
+    >
       <div
         className="modal"
-        onClick={(event) => event.stopPropagation()}
+        onClick={(event) =>
+          event.stopPropagation()
+        }
       >
         <div className="modal-header">
           <div>
-            <p className="eyebrow">Warranty</p>
+            <p className="eyebrow">
+              Warranty
+            </p>
+
             <h3>Add warranty</h3>
           </div>
 
@@ -142,20 +188,67 @@ function AddWarrantyModal({
             </div>
 
             <div className="form-group">
-              <label htmlFor="endDate">
-                End date
+              <label htmlFor="durationMonths">
+                Duration
               </label>
 
-              <input
-                id="endDate"
-                name="endDate"
-                type="date"
-                value={formData.endDate}
+              <select
+                id="durationMonths"
+                name="durationMonths"
+                value={formData.durationMonths}
                 onChange={handleChange}
                 required
-              />
+              >
+                <option value="">
+                  Select duration
+                </option>
+
+                <option value="1">
+                  1 month
+                </option>
+
+                <option value="3">
+                  3 months
+                </option>
+
+                <option value="6">
+                  6 months
+                </option>
+
+                <option value="12">
+                  1 year
+                </option>
+
+                <option value="18">
+                  18 months
+                </option>
+
+                <option value="24">
+                  2 years
+                </option>
+
+                <option value="36">
+                  3 years
+                </option>
+
+                <option value="48">
+                  4 years
+                </option>
+
+                <option value="60">
+                  5 years
+                </option>
+              </select>
             </div>
           </div>
+
+          {endDate && (
+            <div className="calculated-date">
+              <span>Warranty expires</span>
+
+              <strong>{endDate}</strong>
+            </div>
+          )}
 
           <div className="form-group">
             <label htmlFor="coverage">
