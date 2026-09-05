@@ -36,7 +36,8 @@ function Products() {
     purchaseDate: "",
   });
 
-  const productCount = products?.length ?? 0;
+  const productCount =
+    products?.length ?? 0;
 
   /* --------------------------------
      Product form
@@ -79,13 +80,15 @@ function Products() {
   ) => {
     event.preventDefault();
 
-    const now = new Date().toISOString();
+    const now =
+      new Date().toISOString();
 
     await db.products.add({
       name: formData.name.trim(),
       brand: formData.brand.trim(),
       model: formData.model.trim(),
-      purchaseDate: formData.purchaseDate,
+      purchaseDate:
+        formData.purchaseDate,
       createdAt: now,
       updatedAt: now,
     });
@@ -175,6 +178,7 @@ function Products() {
   };
 
   const handleReceiptImport = async (
+    file: File,
     productData: {
       name: string;
       brand: string;
@@ -198,17 +202,6 @@ function Products() {
     const now =
       new Date().toISOString();
 
-    const productId =
-      await db.products.add({
-        name: productData.name,
-        brand: productData.brand,
-        model: productData.model,
-        purchaseDate:
-          productData.purchaseDate,
-        createdAt: now,
-        updatedAt: now,
-      });
-
     const warrantyEndDate =
       new Date(
         warrantyData.startDate
@@ -224,43 +217,168 @@ function Products() {
         .toISOString()
         .split("T")[0];
 
-    await db.warranties.add({
-      productId,
-      provider:
-        warrantyData.provider,
-      type: warrantyData.type,
-      startDate:
-        warrantyData.startDate,
-      durationMonths:
-        warrantyData.durationMonths,
-      endDate,
-      coverage: "",
-      exclusions: "",
-      createdAt: now,
-      updatedAt: now,
-    });
+    await db.transaction(
+      "rw",
+      db.products,
+      db.warranties,
+      db.documents,
+      async () => {
+        const productId =
+          await db.products.add({
+            name:
+              productData.name,
+            brand:
+              productData.brand,
+            model:
+              productData.model,
+            purchaseDate:
+              productData.purchaseDate,
+            purchasePrice:
+              productData.purchasePrice,
+            currency:
+              productData.currency,
+            seller:
+              productData.seller,
+            createdAt: now,
+            updatedAt: now,
+          });
+
+        await db.warranties.add({
+          productId,
+          provider:
+            warrantyData.provider,
+          type:
+            warrantyData.type,
+          startDate:
+            warrantyData.startDate,
+          durationMonths:
+            warrantyData.durationMonths,
+          endDate,
+          coverage: "",
+          exclusions: "",
+          createdAt: now,
+          updatedAt: now,
+        });
+
+        await db.documents.add({
+          productId,
+          name: file.name,
+          type: "receipt",
+          mimeType: file.type,
+          size: file.size,
+          file,
+          createdAt: now,
+        });
+      }
+    );
 
     closeReceiptModal();
   };
 
+  /* --------------------------------
+     Product card
+  -------------------------------- */
+
+  const renderProductCard = (
+    product: Product
+  ) => {
+    return (
+      <article
+        className="product-card"
+        key={product.id}
+      >
+        <a
+          href={`/products/${product.id}`}
+          className="product-information"
+        >
+          <p className="product-brand">
+            {product.brand ||
+              "Unknown brand"}
+          </p>
+
+          <h4>
+            {product.name}
+          </h4>
+
+          <p className="product-model">
+            Model:{" "}
+            {product.model ||
+              "Not provided"}
+          </p>
+        </a>
+
+        <div className="product-date">
+          <span>
+            Purchased
+          </span>
+
+          <strong>
+            {product.purchaseDate ||
+              "Not provided"}
+          </strong>
+        </div>
+
+        <div className="product-actions">
+          <button
+            type="button"
+            className="primary-button"
+            onClick={() =>
+              openWarrantyModal(
+                product.id!
+              )
+            }
+          >
+            Add Warranty
+          </button>
+
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() =>
+              openEditProduct(
+                product
+              )
+            }
+          >
+            Edit
+          </button>
+
+          <button
+            type="button"
+            className="delete-button"
+            onClick={() =>
+              handleDeleteProduct(
+                product.id!
+              )
+            }
+          >
+            Delete
+          </button>
+        </div>
+      </article>
+    );
+  };
+
   return (
     <section className="page-section">
-      {/* Page heading */}
-
       <div className="section-heading">
         <div>
           <p className="eyebrow">
             Products
           </p>
 
-          <h3>Your products</h3>
+          <h3>
+            Your products
+          </h3>
         </div>
 
         <div className="page-actions">
           <button
             type="button"
             className="secondary-button"
-            onClick={openReceiptModal}
+            onClick={
+              openReceiptModal
+            }
           >
             Import Receipt
           </button>
@@ -276,8 +394,6 @@ function Products() {
           </button>
         </div>
       </div>
-
-      {/* Products */}
 
       {productCount === 0 ? (
         <div className="empty-state">
@@ -321,88 +437,10 @@ function Products() {
       ) : (
         <div className="product-list">
           {products?.map(
-            (product) => (
-              <article
-                className="product-card"
-                key={product.id}
-              >
-                {/* Clickable product area */}
-
-                <a
-                  href={`/products/${product.id}`}
-                  className="product-information"
-                >
-                  <p className="product-brand">
-                    {product.brand ||
-                      "Unknown brand"}
-                  </p>
-
-                  <h4>
-                    {product.name}
-                  </h4>
-
-                  <p className="product-model">
-                    Model:{" "}
-                    {product.model ||
-                      "Not provided"}
-                  </p>
-                </a>
-
-                <div className="product-date">
-                  <span>
-                    Purchased
-                  </span>
-
-                  <strong>
-                    {product.purchaseDate ||
-                      "Not provided"}
-                  </strong>
-                </div>
-
-                <div className="product-actions">
-                  <button
-                    type="button"
-                    className="primary-button"
-                    onClick={() =>
-                      openWarrantyModal(
-                        product.id!
-                      )
-                    }
-                  >
-                    Add Warranty
-                  </button>
-
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    onClick={() =>
-                      openEditProduct(
-                        product
-                      )
-                    }
-                  >
-                    Edit
-                  </button>
-
-                  <button
-                    type="button"
-                    className="delete-button"
-                    onClick={() =>
-                      handleDeleteProduct(
-                        product.id!
-                      )
-                    }
-                  >
-                    Delete
-                  </button>
-                </div>
-              </article>
-            )
+            renderProductCard
           )}
         </div>
       )}
-
-      {/* Add/Edit Product Modal */}
 
       {isProductModalOpen && (
         <div
@@ -552,8 +590,6 @@ function Products() {
         </div>
       )}
 
-      {/* Add Warranty Modal */}
-
       {warrantyProductId !== null && (
         <AddWarrantyModal
           productId={
@@ -564,8 +600,6 @@ function Products() {
           }
         />
       )}
-
-      {/* Receipt Analysis Modal */}
 
       {isReceiptModalOpen && (
         <ReceiptAnalysisModal

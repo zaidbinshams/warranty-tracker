@@ -18,11 +18,13 @@ type ExtractedProduct = {
 
 type ExtractedWarranty = {
   provider: string;
+
   type:
     | "manufacturer"
     | "seller"
     | "extended"
     | "other";
+
   durationMonths: number;
   startDate: string;
 };
@@ -31,6 +33,7 @@ type Props = {
   onClose: () => void;
 
   onComplete: (
+    file: File,
     product: ExtractedProduct,
     warranty: ExtractedWarranty
   ) => void;
@@ -97,8 +100,8 @@ function ReceiptAnalysisModal({
     /*
      * Temporary mock AI response.
      *
-     * This will later be replaced by the
-     * real backend/AI request.
+     * This will later be replaced with the
+     * real backend + AI service.
      */
 
     await new Promise((resolve) =>
@@ -174,7 +177,8 @@ function ReceiptAnalysisModal({
       if (field === "type") {
         return {
           ...current,
-          type: value as ExtractedWarranty["type"],
+          type:
+            value as ExtractedWarranty["type"],
         };
       }
 
@@ -186,11 +190,19 @@ function ReceiptAnalysisModal({
   };
 
   const handleSave = () => {
-    if (!product || !warranty) {
+    if (
+      !file ||
+      !product ||
+      !warranty
+    ) {
       return;
     }
 
-    onComplete(product, warranty);
+    onComplete(
+      file,
+      product,
+      warranty
+    );
   };
 
   const handleAnalyzeAgain = () => {
@@ -365,8 +377,6 @@ function ReceiptAnalysisModal({
               </button>
             </div>
 
-            {/* Product */}
-
             <div className="extraction-section">
               <div className="extraction-heading">
                 <h4>Product</h4>
@@ -386,7 +396,9 @@ function ReceiptAnalysisModal({
                     <input
                       className="extraction-input"
                       type="text"
-                      value={product?.name ?? ""}
+                      value={
+                        product?.name ?? ""
+                      }
                       onChange={(event) =>
                         updateProductField(
                           "name",
@@ -410,7 +422,9 @@ function ReceiptAnalysisModal({
                     <input
                       className="extraction-input"
                       type="text"
-                      value={product?.brand ?? ""}
+                      value={
+                        product?.brand ?? ""
+                      }
                       onChange={(event) =>
                         updateProductField(
                           "brand",
@@ -434,7 +448,9 @@ function ReceiptAnalysisModal({
                     <input
                       className="extraction-input"
                       type="text"
-                      value={product?.model ?? ""}
+                      value={
+                        product?.model ?? ""
+                      }
                       onChange={(event) =>
                         updateProductField(
                           "model",
@@ -516,7 +532,9 @@ function ReceiptAnalysisModal({
                     <input
                       className="extraction-input"
                       type="text"
-                      value={product?.seller ?? ""}
+                      value={
+                        product?.seller ?? ""
+                      }
                       onChange={(event) =>
                         updateProductField(
                           "seller",
@@ -532,8 +550,6 @@ function ReceiptAnalysisModal({
                 </div>
               </div>
             </div>
-
-            {/* Warranty */}
 
             <div className="extraction-section">
               <div className="extraction-heading">
@@ -689,7 +705,9 @@ function ReceiptAnalysisModal({
               <button
                 type="button"
                 className="secondary-button"
-                onClick={handleAnalyzeAgain}
+                onClick={
+                  handleAnalyzeAgain
+                }
               >
                 Analyze Again
               </button>

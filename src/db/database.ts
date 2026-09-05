@@ -2,19 +2,27 @@ import Dexie, { type Table } from "dexie";
 
 export type Product = {
   id?: number;
+
   name: string;
   brand: string;
   model: string;
+
   purchaseDate: string;
+  purchasePrice?: number;
+  currency?: string;
+  seller?: string;
+
   createdAt: string;
   updatedAt: string;
 };
 
 export type Warranty = {
   id?: number;
+
   productId: number;
 
   provider: string;
+
   type:
     | "manufacturer"
     | "seller"
@@ -77,6 +85,17 @@ class WarrantyDatabase extends Dexie {
     });
 
     this.version(3).stores({
+      products:
+        "++id, name, brand, model, purchaseDate, createdAt",
+
+      warranties:
+        "++id, productId, provider, type, startDate, endDate",
+
+      documents:
+        "++id, productId, type, createdAt",
+    });
+
+    this.version(4).stores({
       products:
         "++id, name, brand, model, purchaseDate, createdAt",
 
