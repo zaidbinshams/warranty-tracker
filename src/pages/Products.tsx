@@ -13,6 +13,7 @@ import { useProducts } from "../db/hooks";
 
 import AddWarrantyModal from "../components/AddWarrantyModal";
 import ReceiptAnalysisModal from "../components/ReceiptAnalysisModal";
+import { addMonths } from "../utils/date";
 
 function Products() {
   const products = useProducts();
@@ -370,20 +371,10 @@ function Products() {
             warrantyData.durationMonths >
               0
           ) {
-            const warrantyEndDate =
-              new Date(
-                warrantyData.startDate
-              );
-
-            warrantyEndDate.setMonth(
-              warrantyEndDate.getMonth() +
-                warrantyData.durationMonths
-            );
-
-            const endDate =
-              warrantyEndDate
-                .toISOString()
-                .split("T")[0];
+            const endDate = addMonths(
+  warrantyData.startDate,
+  warrantyData.durationMonths
+);
 
             await db.warranties.add({
               productId,
