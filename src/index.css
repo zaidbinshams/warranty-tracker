@@ -1142,3 +1142,7 @@ button {
     flex-direction: column;
   }
 }
+
+.form-row .form-group {
+  min-width: 0;
+}

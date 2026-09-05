@@ -34,6 +34,9 @@ function Products() {
     brand: "",
     model: "",
     purchaseDate: "",
+    purchasePrice: "",
+    currency: "INR",
+    seller: "",
   });
 
   const productCount =
@@ -60,6 +63,9 @@ function Products() {
       brand: "",
       model: "",
       purchaseDate: "",
+      purchasePrice: "",
+      currency: "INR",
+      seller: "",
     });
   };
 
@@ -83,12 +89,23 @@ function Products() {
     const now =
       new Date().toISOString();
 
+    const purchasePrice =
+      formData.purchasePrice.trim() !== ""
+        ? Number(formData.purchasePrice)
+        : undefined;
+
     await db.products.add({
       name: formData.name.trim(),
       brand: formData.brand.trim(),
       model: formData.model.trim(),
       purchaseDate:
         formData.purchaseDate,
+      purchasePrice,
+      currency:
+        purchasePrice !== undefined
+          ? formData.currency
+          : undefined,
+      seller: formData.seller.trim() || undefined,
       createdAt: now,
       updatedAt: now,
     });
@@ -107,6 +124,14 @@ function Products() {
       model: product.model,
       purchaseDate:
         product.purchaseDate,
+      purchasePrice:
+        product.purchasePrice !== undefined
+          ? String(product.purchasePrice)
+          : "",
+      currency:
+        product.currency ?? "INR",
+      seller:
+        product.seller ?? "",
     });
 
     setIsProductModalOpen(true);
@@ -121,6 +146,11 @@ function Products() {
       return;
     }
 
+    const purchasePrice =
+      formData.purchasePrice.trim() !== ""
+        ? Number(formData.purchasePrice)
+        : undefined;
+
     await db.products.update(
       editingProduct.id,
       {
@@ -129,6 +159,14 @@ function Products() {
         model: formData.model.trim(),
         purchaseDate:
           formData.purchaseDate,
+        purchasePrice,
+        currency:
+          purchasePrice !== undefined
+            ? formData.currency
+            : undefined,
+        seller:
+          formData.seller.trim() ||
+          undefined,
         updatedAt:
           new Date().toISOString(),
       }
@@ -316,6 +354,18 @@ function Products() {
             {product.purchaseDate ||
               "Not provided"}
           </strong>
+
+          {product.purchasePrice !==
+            undefined && (
+            <strong>
+              {product.currency === "INR"
+                ? "₹"
+                : product.currency + " "}
+              {product.purchasePrice.toLocaleString(
+                "en-IN"
+              )}
+            </strong>
+          )}
         </div>
 
         <div className="product-actions">
@@ -361,6 +411,8 @@ function Products() {
 
   return (
     <section className="page-section">
+      {/* Page heading */}
+
       <div className="section-heading">
         <div>
           <p className="eyebrow">
@@ -394,6 +446,8 @@ function Products() {
           </button>
         </div>
       </div>
+
+      {/* Products */}
 
       {productCount === 0 ? (
         <div className="empty-state">
@@ -441,6 +495,8 @@ function Products() {
           )}
         </div>
       )}
+
+      {/* Product Modal */}
 
       {isProductModalOpen && (
         <div
@@ -565,6 +621,88 @@ function Products() {
                 />
               </div>
 
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="purchasePrice">
+                    Purchase price
+                  </label>
+
+                  <input
+                    id="purchasePrice"
+                    name="purchasePrice"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="e.g. 74999"
+                    value={
+                      formData.purchasePrice
+                    }
+                    onChange={
+                      handleInputChange
+                    }
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="currency">
+                    Currency
+                  </label>
+
+                  <select
+                    id="currency"
+                    name="currency"
+                    value={
+                      formData.currency
+                    }
+                    onChange={(event) =>
+                      setFormData(
+                        (current) => ({
+                          ...current,
+                          currency:
+                            event.target
+                              .value,
+                        })
+                      )
+                    }
+                  >
+                    <option value="INR">
+                      INR
+                    </option>
+
+                    <option value="USD">
+                      USD
+                    </option>
+
+                    <option value="EUR">
+                      EUR
+                    </option>
+
+                    <option value="GBP">
+                      GBP
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="seller">
+                  Seller
+                </label>
+
+                <input
+                  id="seller"
+                  name="seller"
+                  type="text"
+                  placeholder="e.g. Amazon"
+                  value={
+                    formData.seller
+                  }
+                  onChange={
+                    handleInputChange
+                  }
+                />
+              </div>
+
               <div className="modal-actions">
                 <button
                   type="button"
@@ -590,6 +728,8 @@ function Products() {
         </div>
       )}
 
+      {/* Warranty Modal */}
+
       {warrantyProductId !== null && (
         <AddWarrantyModal
           productId={
@@ -600,6 +740,8 @@ function Products() {
           }
         />
       )}
+
+      {/* Receipt Analysis Modal */}
 
       {isReceiptModalOpen && (
         <ReceiptAnalysisModal
