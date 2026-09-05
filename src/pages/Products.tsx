@@ -17,27 +17,36 @@ import ReceiptAnalysisModal from "../components/ReceiptAnalysisModal";
 function Products() {
   const products = useProducts();
 
-  const [isProductModalOpen, setIsProductModalOpen] =
-    useState(false);
+  const [
+    isProductModalOpen,
+    setIsProductModalOpen,
+  ] = useState(false);
 
-  const [editingProduct, setEditingProduct] =
-    useState<Product | null>(null);
+  const [
+    editingProduct,
+    setEditingProduct,
+  ] = useState<Product | null>(null);
 
-  const [warrantyProductId, setWarrantyProductId] =
-    useState<number | null>(null);
+  const [
+    warrantyProductId,
+    setWarrantyProductId,
+  ] = useState<number | null>(null);
 
-  const [isReceiptModalOpen, setIsReceiptModalOpen] =
-    useState(false);
+  const [
+    isReceiptModalOpen,
+    setIsReceiptModalOpen,
+  ] = useState(false);
 
-  const [formData, setFormData] = useState({
-    name: "",
-    brand: "",
-    model: "",
-    purchaseDate: "",
-    purchasePrice: "",
-    currency: "INR",
-    seller: "",
-  });
+  const [formData, setFormData] =
+    useState({
+      name: "",
+      brand: "",
+      model: "",
+      purchaseDate: "",
+      purchasePrice: "",
+      currency: "INR",
+      seller: "",
+    });
 
   const productCount =
     products?.length ?? 0;
@@ -49,11 +58,22 @@ function Products() {
   const handleInputChange = (
     event: ChangeEvent<HTMLInputElement>
   ) => {
-    const { name, value } = event.target;
+    const { name, value } =
+      event.target;
 
     setFormData((current) => ({
       ...current,
       [name]: value,
+    }));
+  };
+
+  const handleCurrencyChange = (
+    event: ChangeEvent<HTMLSelectElement>
+  ) => {
+    setFormData((current) => ({
+      ...current,
+      currency:
+        event.target.value,
     }));
   };
 
@@ -91,21 +111,35 @@ function Products() {
 
     const purchasePrice =
       formData.purchasePrice.trim() !== ""
-        ? Number(formData.purchasePrice)
+        ? Number(
+            formData.purchasePrice
+          )
         : undefined;
 
     await db.products.add({
-      name: formData.name.trim(),
-      brand: formData.brand.trim(),
-      model: formData.model.trim(),
+      name:
+        formData.name.trim(),
+
+      brand:
+        formData.brand.trim(),
+
+      model:
+        formData.model.trim(),
+
       purchaseDate:
         formData.purchaseDate,
+
       purchasePrice,
+
       currency:
         purchasePrice !== undefined
           ? formData.currency
           : undefined,
-      seller: formData.seller.trim() || undefined,
+
+      seller:
+        formData.seller.trim() ||
+        undefined,
+
       createdAt: now,
       updatedAt: now,
     });
@@ -125,8 +159,11 @@ function Products() {
       purchaseDate:
         product.purchaseDate,
       purchasePrice:
-        product.purchasePrice !== undefined
-          ? String(product.purchasePrice)
+        product.purchasePrice !==
+        undefined
+          ? String(
+              product.purchasePrice
+            )
           : "",
       currency:
         product.currency ?? "INR",
@@ -148,25 +185,37 @@ function Products() {
 
     const purchasePrice =
       formData.purchasePrice.trim() !== ""
-        ? Number(formData.purchasePrice)
+        ? Number(
+            formData.purchasePrice
+          )
         : undefined;
 
     await db.products.update(
       editingProduct.id,
       {
-        name: formData.name.trim(),
-        brand: formData.brand.trim(),
-        model: formData.model.trim(),
+        name:
+          formData.name.trim(),
+
+        brand:
+          formData.brand.trim(),
+
+        model:
+          formData.model.trim(),
+
         purchaseDate:
           formData.purchaseDate,
+
         purchasePrice,
+
         currency:
           purchasePrice !== undefined
             ? formData.currency
             : undefined,
+
         seller:
           formData.seller.trim() ||
           undefined,
+
         updatedAt:
           new Date().toISOString(),
       }
@@ -175,19 +224,19 @@ function Products() {
     closeProductModal();
   };
 
-  const handleDeleteProduct = async (
-    id: number
-  ) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this product?"
-    );
+  const handleDeleteProduct =
+    async (id: number) => {
+      const confirmed =
+        window.confirm(
+          "Are you sure you want to delete this product?"
+        );
 
-    if (!confirmed) {
-      return;
-    }
+      if (!confirmed) {
+        return;
+      }
 
-    await db.products.delete(id);
-  };
+      await db.products.delete(id);
+    };
 
   /* --------------------------------
      Warranty modal
@@ -196,7 +245,9 @@ function Products() {
   const openWarrantyModal = (
     productId: number
   ) => {
-    setWarrantyProductId(productId);
+    setWarrantyProductId(
+      productId
+    );
   };
 
   const closeWarrantyModal = () => {
@@ -215,103 +266,142 @@ function Products() {
     setIsReceiptModalOpen(false);
   };
 
-  const handleReceiptImport = async (
-    file: File,
-    productData: {
-      name: string;
-      brand: string;
-      model: string;
-      purchaseDate: string;
-      purchasePrice: number;
-      currency: string;
-      seller: string;
-    },
-    warrantyData: {
-      provider: string;
-      type:
-        | "manufacturer"
-        | "seller"
-        | "extended"
-        | "other";
-      durationMonths: number;
-      startDate: string;
-    }
-  ) => {
-    const now =
-      new Date().toISOString();
+  const handleReceiptImport =
+    async (
+      file: File,
+      productData: {
+        name: string;
+        brand: string;
+        model: string;
+        purchaseDate: string;
+        purchasePrice: number;
+        currency: string;
+        seller: string;
+      },
+      warrantyData: {
+        found: boolean;
+        provider: string;
+        type:
+          | "manufacturer"
+          | "seller"
+          | "extended"
+          | "other";
+        durationMonths: number;
+        startDate: string;
+      }
+    ) => {
+      const now =
+        new Date().toISOString();
 
-    const warrantyEndDate =
-      new Date(
-        warrantyData.startDate
+      await db.transaction(
+        "rw",
+        db.products,
+        db.warranties,
+        db.documents,
+        async () => {
+          const productId =
+            await db.products.add({
+              name:
+                productData.name,
+
+              brand:
+                productData.brand,
+
+              model:
+                productData.model,
+
+              purchaseDate:
+                productData.purchaseDate,
+
+              purchasePrice:
+                productData.purchasePrice,
+
+              currency:
+                productData.currency,
+
+              seller:
+                productData.seller,
+
+              createdAt: now,
+              updatedAt: now,
+            });
+
+          /*
+           * Only create a warranty when
+           * the receipt actually contained
+           * warranty information.
+           */
+          if (
+            warrantyData.found &&
+            warrantyData.startDate &&
+            warrantyData.durationMonths >
+              0
+          ) {
+            const warrantyEndDate =
+              new Date(
+                warrantyData.startDate
+              );
+
+            warrantyEndDate.setMonth(
+              warrantyEndDate.getMonth() +
+                warrantyData.durationMonths
+            );
+
+            const endDate =
+              warrantyEndDate
+                .toISOString()
+                .split("T")[0];
+
+            await db.warranties.add({
+              productId,
+
+              provider:
+                warrantyData.provider,
+
+              type:
+                warrantyData.type,
+
+              startDate:
+                warrantyData.startDate,
+
+              durationMonths:
+                warrantyData.durationMonths,
+
+              endDate,
+
+              coverage: "",
+
+              exclusions: "",
+
+              createdAt: now,
+              updatedAt: now,
+            });
+          }
+
+          /*
+           * Always preserve the original
+           * receipt alongside the product.
+           */
+          await db.documents.add({
+            productId,
+
+            name: file.name,
+
+            type: "receipt",
+
+            mimeType: file.type,
+
+            size: file.size,
+
+            file,
+
+            createdAt: now,
+          });
+        }
       );
 
-    warrantyEndDate.setMonth(
-      warrantyEndDate.getMonth() +
-        warrantyData.durationMonths
-    );
-
-    const endDate =
-      warrantyEndDate
-        .toISOString()
-        .split("T")[0];
-
-    await db.transaction(
-      "rw",
-      db.products,
-      db.warranties,
-      db.documents,
-      async () => {
-        const productId =
-          await db.products.add({
-            name:
-              productData.name,
-            brand:
-              productData.brand,
-            model:
-              productData.model,
-            purchaseDate:
-              productData.purchaseDate,
-            purchasePrice:
-              productData.purchasePrice,
-            currency:
-              productData.currency,
-            seller:
-              productData.seller,
-            createdAt: now,
-            updatedAt: now,
-          });
-
-        await db.warranties.add({
-          productId,
-          provider:
-            warrantyData.provider,
-          type:
-            warrantyData.type,
-          startDate:
-            warrantyData.startDate,
-          durationMonths:
-            warrantyData.durationMonths,
-          endDate,
-          coverage: "",
-          exclusions: "",
-          createdAt: now,
-          updatedAt: now,
-        });
-
-        await db.documents.add({
-          productId,
-          name: file.name,
-          type: "receipt",
-          mimeType: file.type,
-          size: file.size,
-          file,
-          createdAt: now,
-        });
-      }
-    );
-
-    closeReceiptModal();
-  };
+      closeReceiptModal();
+    };
 
   /* --------------------------------
      Product card
@@ -358,9 +448,10 @@ function Products() {
           {product.purchasePrice !==
             undefined && (
             <strong>
-              {product.currency === "INR"
+              {product.currency ===
+              "INR"
                 ? "₹"
-                : product.currency + " "}
+                : `${product.currency ?? ""} `}
               {product.purchasePrice.toLocaleString(
                 "en-IN"
               )}
@@ -411,8 +502,6 @@ function Products() {
 
   return (
     <section className="page-section">
-      {/* Page heading */}
-
       <div className="section-heading">
         <div>
           <p className="eyebrow">
@@ -446,8 +535,6 @@ function Products() {
           </button>
         </div>
       </div>
-
-      {/* Products */}
 
       {productCount === 0 ? (
         <div className="empty-state">
@@ -496,7 +583,7 @@ function Products() {
         </div>
       )}
 
-      {/* Product Modal */}
+      {/* Product modal */}
 
       {isProductModalOpen && (
         <div
@@ -654,15 +741,8 @@ function Products() {
                     value={
                       formData.currency
                     }
-                    onChange={(event) =>
-                      setFormData(
-                        (current) => ({
-                          ...current,
-                          currency:
-                            event.target
-                              .value,
-                        })
-                      )
+                    onChange={
+                      handleCurrencyChange
                     }
                   >
                     <option value="INR">
@@ -728,7 +808,7 @@ function Products() {
         </div>
       )}
 
-      {/* Warranty Modal */}
+      {/* Warranty modal */}
 
       {warrantyProductId !== null && (
         <AddWarrantyModal
@@ -741,7 +821,7 @@ function Products() {
         />
       )}
 
-      {/* Receipt Analysis Modal */}
+      {/* Receipt analysis modal */}
 
       {isReceiptModalOpen && (
         <ReceiptAnalysisModal

@@ -461,6 +461,7 @@ button {
   justify-content: flex-end;
   gap: 10px;
   margin-top: 26px;
+  flex-wrap: wrap;
 }
 
 /* Responsive */
@@ -1145,4 +1146,69 @@ button {
 
 .form-row .form-group {
   min-width: 0;
+}
+
+.no-warranty {
+  padding: 16px;
+  border: 1px solid #7E824D;
+  border-radius: 8px;
+  background: #ECECCD;
+}
+
+.no-warranty strong {
+  display: block;
+  color: #17241A;
+  font-size: 13px;
+}
+
+.no-warranty p {
+  margin: 6px 0 0;
+  color: #7E824D;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.document-assignment {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #7E824D;
+}
+
+.document-assignment label {
+  color: #17241A;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.document-assignment select {
+  min-width: 220px;
+  padding: 9px 10px;
+  border: 1px solid #7E824D;
+  border-radius: 8px;
+  outline: none;
+  background: #ECECCD;
+  color: #17241A;
+  font-size: 12px;
+}
+
+.document-assignment select:focus {
+  border-color: #87B086;
+  outline: 2px solid #87B086;
+  outline-offset: 1px;
+}
+
+@media (max-width: 700px) {
+  .document-assignment {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .document-assignment select {
+    width: 100%;
+    min-width: 0;
+  }
 }

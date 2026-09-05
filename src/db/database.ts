@@ -50,7 +50,7 @@ export type DocumentType =
 export type Document = {
   id?: number;
 
-  productId: number;
+  productId?: number;
 
   name: string;
   type: DocumentType;

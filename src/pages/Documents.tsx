@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+
 import { Link } from "react-router-dom";
 
 import {
@@ -25,14 +26,21 @@ function Documents() {
   const [filterType, setFilterType] =
     useState<FilterType>("all");
 
+  const [assigningDocumentId, setAssigningDocumentId] =
+    useState<number | null>(null);
+
   const getProductName = (
-    productId: number
+    productId?: number
   ) => {
+    if (productId === undefined) {
+      return "Unassigned";
+    }
+
     const product = products?.find(
       (item) => item.id === productId
     );
 
-    return product?.name ?? "Unknown product";
+    return product?.name ?? "Product not found";
   };
 
   const filteredDocuments = useMemo(() => {
@@ -77,9 +85,11 @@ function Documents() {
     filterType,
   ]);
 
-  const openDocument = (document: {
-    file: Blob;
-  }) => {
+  const openDocument = (
+    document: {
+      file: Blob;
+    }
+  ) => {
     const url = URL.createObjectURL(
       document.file
     );
@@ -91,19 +101,56 @@ function Documents() {
     }, 10000);
   };
 
-  const handleDeleteDocument = async (
-    documentId: number
-  ) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this document?"
-    );
+  const handleDeleteDocument =
+    async (
+      documentId: number
+    ) => {
+      const confirmed =
+        window.confirm(
+          "Are you sure you want to delete this document?"
+        );
 
-    if (!confirmed) {
-      return;
-    }
+      if (!confirmed) {
+        return;
+      }
 
-    await db.documents.delete(documentId);
-  };
+      await db.documents.delete(
+        documentId
+      );
+    };
+
+  const handleAssignDocument =
+    async (
+      documentId: number,
+      productId: number
+    ) => {
+      await db.documents.update(
+        documentId,
+        {
+          productId,
+        }
+      );
+
+      setAssigningDocumentId(
+        null
+      );
+    };
+
+  const handleUnassignDocument =
+    async (
+      documentId: number
+    ) => {
+      await db.documents.update(
+        documentId,
+        {
+          productId: undefined,
+        }
+      );
+
+      setAssigningDocumentId(
+        null
+      );
+    };
 
   return (
     <section className="page-section">
@@ -118,6 +165,8 @@ function Documents() {
           </h3>
         </div>
       </div>
+
+      {/* Search and filter */}
 
       <div className="document-toolbar">
         <div className="document-search">
@@ -180,6 +229,8 @@ function Documents() {
         </div>
       </div>
 
+      {/* Documents */}
+
       {!documents ? (
         <div className="empty-state">
           <h4>
@@ -213,67 +264,175 @@ function Documents() {
       ) : (
         <div className="document-list">
           {filteredDocuments.map(
-            (document) => (
-              <article
-                className="document-card"
-                key={document.id}
-              >
-                <div className="document-information">
-                  <p className="product-brand">
-                    {document.type}
-                  </p>
+            (document) => {
+              const isUnassigned =
+                document.productId ===
+                undefined;
 
-                  <h4>
-                    {document.name}
-                  </h4>
+              const productName =
+                getProductName(
+                  document.productId
+                );
 
-                  <p className="document-meta">
-                    {getProductName(
-                      document.productId
+              return (
+                <article
+                  className="document-card"
+                  key={document.id}
+                >
+                  <div className="document-information">
+                    <p className="product-brand">
+                      {document.type}
+                    </p>
+
+                    <h4>
+                      {document.name}
+                    </h4>
+
+                    <p className="document-meta">
+                      {isUnassigned
+                        ? "Unassigned"
+                        : productName}
+                    </p>
+
+                    <p className="document-meta">
+                      {(
+                        document.size /
+                        1024
+                      ).toFixed(1)}{" "}
+                      KB
+                    </p>
+                  </div>
+
+                  <div className="document-actions">
+                    {!isUnassigned &&
+                    document.productId !==
+                      undefined ? (
+                      <Link
+                        to={`/products/${document.productId}`}
+                        className="secondary-button link-button"
+                      >
+                        Product
+                      </Link>
+                    ) : null}
+
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() =>
+                        openDocument(
+                          document
+                        )
+                      }
+                    >
+                      Open
+                    </button>
+
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() =>
+                        setAssigningDocumentId(
+                          assigningDocumentId ===
+                            document.id
+                            ? null
+                            : document.id ??
+                              null
+                        )
+                      }
+                    >
+                      {isUnassigned
+                        ? "Assign"
+                        : "Move"}
+                    </button>
+
+                    {!isUnassigned && (
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() =>
+                          handleUnassignDocument(
+                            document.id!
+                          )
+                        }
+                      >
+                        Unassign
+                      </button>
                     )}
-                  </p>
 
-                  <p className="document-meta">
-                    {(
-                      document.size /
-                      1024
-                    ).toFixed(1)}{" "}
-                    KB
-                  </p>
-                </div>
+                    <button
+                      type="button"
+                      className="delete-button"
+                      onClick={() =>
+                        handleDeleteDocument(
+                          document.id!
+                        )
+                      }
+                    >
+                      Delete
+                    </button>
+                  </div>
 
-                <div className="document-actions">
-                  <Link
-                    to={`/products/${document.productId}`}
-                    className="secondary-button link-button"
-                  >
-                    Product
-                  </Link>
+                  {/* Assignment controls */}
 
-                  <button
-                    className="secondary-button"
-                    onClick={() =>
-                      openDocument(
-                        document
-                      )
-                    }
-                  >
-                    Open
-                  </button>
+                  {assigningDocumentId ===
+                    document.id && (
+                    <div className="document-assignment">
+                      <label
+                        htmlFor={`assign-${document.id}`}
+                      >
+                        {isUnassigned
+                          ? "Assign to product"
+                          : "Move to product"}
+                      </label>
 
-                  <button
-                    className="delete-button"
-                    onClick={() =>
-                      handleDeleteDocument(
-                        document.id!
-                      )
-                    }
-                  >
-                    Delete
-                  </button>
-                </div>
-              </article>
-            )
+                      <select
+                        id={`assign-${document.id}`}
+                        defaultValue=""
+                        onChange={(event) => {
+                          const value =
+                            Number(
+                              event.target
+                                .value
+                            );
+
+                          if (
+                            !Number.isInteger(
+                              value
+                            )
+                          ) {
+                            return;
+                          }
+
+                          handleAssignDocument(
+                            document.id!,
+                            value
+                          );
+                        }}
+                      >
+                        <option value="">
+                          Select a product
+                        </option>
+
+                        {products?.map(
+                          (product) => (
+                            <option
+                              key={
+                                product.id
+                              }
+                              value={
+                                product.id
+                              }
+                            >
+                              {product.name}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </div>
+                  )}
+                </article>
+              );
+            }
           )}
         </div>
       )}

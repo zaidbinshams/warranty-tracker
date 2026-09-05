@@ -2,6 +2,10 @@ import { useState } from "react";
 import type { ChangeEvent } from "react";
 
 import {
+  db,
+} from "../db/database";
+
+import {
   validateFile,
   formatFileSize,
 } from "../utils/files";
@@ -14,17 +18,17 @@ type ExtractedProduct = {
   purchasePrice: number;
   currency: string;
   seller: string;
+  dateEvidence: string;
 };
 
 type ExtractedWarranty = {
+  found: boolean;
   provider: string;
-
   type:
     | "manufacturer"
     | "seller"
     | "extended"
     | "other";
-
   durationMonths: number;
   startDate: string;
 };
@@ -50,6 +54,9 @@ function ReceiptAnalysisModal({
     useState("");
 
   const [isAnalyzing, setIsAnalyzing] =
+    useState(false);
+
+  const [isSavingLocally, setIsSavingLocally] =
     useState(false);
 
   const [isComplete, setIsComplete] =
@@ -89,6 +96,35 @@ function ReceiptAnalysisModal({
     setFile(selectedFile);
   };
 
+  const saveWithoutAI = async () => {
+    if (!file) {
+      return;
+    }
+
+    setError("");
+    setIsSavingLocally(true);
+
+    try {
+      await db.documents.add({
+        name: file.name,
+        type: "receipt",
+        mimeType: file.type,
+        size: file.size,
+        file,
+        createdAt:
+          new Date().toISOString(),
+      });
+
+      onClose();
+    } catch {
+      setError(
+        "The receipt could not be saved locally. Please try again."
+      );
+    } finally {
+      setIsSavingLocally(false);
+    }
+  };
+
   const analyzeReceipt = async () => {
     if (!file) {
       return;
@@ -97,40 +133,78 @@ function ReceiptAnalysisModal({
     setError("");
     setIsAnalyzing(true);
 
-    /*
-     * Temporary mock AI response.
-     *
-     * This will later be replaced with the
-     * real backend + AI service.
-     */
+    try {
+      const formData =
+        new FormData();
 
-    await new Promise((resolve) =>
-      setTimeout(resolve, 1800)
-    );
+      formData.append(
+        "receipt",
+        file
+      );
 
-    const mockProduct: ExtractedProduct = {
-      name: "MacBook Air",
-      brand: "Apple",
-      model: "A3113",
-      purchaseDate: "2026-08-15",
-      purchasePrice: 104999,
-      currency: "INR",
-      seller: "Amazon",
-    };
+      const response =
+        await fetch(
+          "http://localhost:3001/api/analyze-receipt",
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
 
-    const mockWarranty: ExtractedWarranty = {
-      provider: "Apple",
-      type: "manufacturer",
-      durationMonths: 12,
-      startDate: "2026-08-15",
-    };
+      let data: unknown;
 
-    setProduct(mockProduct);
-    setWarranty(mockWarranty);
+      try {
+        data = await response.json();
+      } catch {
+        throw new Error(
+          "The server returned an invalid response."
+        );
+      }
 
-    setIsAnalyzing(false);
-    setIsComplete(true);
-    setIsEditing(false);
+      if (!response.ok) {
+        const serverError =
+          typeof data === "object" &&
+          data !== null &&
+          "error" in data &&
+          typeof data.error === "string"
+            ? data.error
+            : "Receipt analysis failed.";
+
+        throw new Error(serverError);
+      }
+
+      const result = data as {
+        product?: ExtractedProduct;
+        warranty?: ExtractedWarranty;
+      };
+
+      if (
+        !result.product ||
+        !result.warranty
+      ) {
+        throw new Error(
+          "The AI response was incomplete."
+        );
+      }
+
+      setProduct(result.product);
+      setWarranty(result.warranty);
+
+      setIsComplete(true);
+      setIsEditing(false);
+    } catch (error) {
+      if (
+        error instanceof Error
+      ) {
+        setError(error.message);
+      } else {
+        setError(
+          "Something went wrong while analyzing the receipt."
+        );
+      }
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const updateProductField = (
@@ -142,7 +216,9 @@ function ReceiptAnalysisModal({
         return current;
       }
 
-      if (field === "purchasePrice") {
+      if (
+        field === "purchasePrice"
+      ) {
         return {
           ...current,
           purchasePrice:
@@ -166,11 +242,20 @@ function ReceiptAnalysisModal({
         return current;
       }
 
-      if (field === "durationMonths") {
+      if (
+        field === "durationMonths"
+      ) {
         return {
           ...current,
           durationMonths:
             Number(value) || 0,
+        };
+      }
+
+      if (field === "found") {
+        return {
+          ...current,
+          found: value === "true",
         };
       }
 
@@ -248,9 +333,10 @@ function ReceiptAnalysisModal({
             </div>
 
             <p className="modal-description">
-              Upload a receipt and Warranty
-              Tracker will extract the
-              product information for you.
+              Upload a receipt to keep it in
+              Warranty Tracker. You can
+              choose whether to analyze it
+              with AI.
             </p>
 
             <div className="form-group">
@@ -262,7 +348,9 @@ function ReceiptAnalysisModal({
                 id="receipt-file"
                 type="file"
                 accept=".pdf,.png,.jpg,.jpeg,.webp"
-                onChange={handleFileChange}
+                onChange={
+                  handleFileChange
+                }
               />
             </div>
 
@@ -292,14 +380,15 @@ function ReceiptAnalysisModal({
 
             <div className="privacy-notice">
               <strong>
-                Privacy
+                Your choice
               </strong>
 
               <p>
-                Your receipt remains on
-                this device unless you
-                explicitly choose to analyze
-                it with AI.
+                Save without AI to keep the
+                receipt entirely on this
+                device. Analyzing with AI
+                sends the receipt to the
+                configured AI service.
               </p>
             </div>
 
@@ -307,9 +396,19 @@ function ReceiptAnalysisModal({
               <button
                 type="button"
                 className="secondary-button"
-                onClick={onClose}
+                onClick={
+                  saveWithoutAI
+                }
+                disabled={
+                  !file ||
+                  Boolean(error) ||
+                  isSavingLocally ||
+                  isAnalyzing
+                }
               >
-                Cancel
+                {isSavingLocally
+                  ? "Saving..."
+                  : "Save Without AI"}
               </button>
 
               <button
@@ -318,9 +417,12 @@ function ReceiptAnalysisModal({
                 disabled={
                   !file ||
                   Boolean(error) ||
+                  isSavingLocally ||
                   isAnalyzing
                 }
-                onClick={analyzeReceipt}
+                onClick={
+                  analyzeReceipt
+                }
               >
                 {isAnalyzing
                   ? "Analyzing..."
@@ -337,7 +439,8 @@ function ReceiptAnalysisModal({
                 </p>
 
                 <h3>
-                  We found this information
+                  We found this
+                  information
                 </h3>
               </div>
 
@@ -397,12 +500,14 @@ function ReceiptAnalysisModal({
                       className="extraction-input"
                       type="text"
                       value={
-                        product?.name ?? ""
+                        product?.name ??
+                        ""
                       }
                       onChange={(event) =>
                         updateProductField(
                           "name",
-                          event.target.value
+                          event.target
+                            .value
                         )
                       }
                     />
@@ -414,53 +519,55 @@ function ReceiptAnalysisModal({
                 </div>
 
                 <div className="extraction-field">
-                  <span>
-                    Brand
-                  </span>
+                  <span>Brand</span>
 
                   {isEditing ? (
                     <input
                       className="extraction-input"
                       type="text"
                       value={
-                        product?.brand ?? ""
+                        product?.brand ??
+                        ""
                       }
                       onChange={(event) =>
                         updateProductField(
                           "brand",
-                          event.target.value
+                          event.target
+                            .value
                         )
                       }
                     />
                   ) : (
                     <strong>
-                      {product?.brand}
+                      {product?.brand ||
+                        "Not found"}
                     </strong>
                   )}
                 </div>
 
                 <div className="extraction-field">
-                  <span>
-                    Model
-                  </span>
+                  <span>Model</span>
 
                   {isEditing ? (
                     <input
                       className="extraction-input"
                       type="text"
                       value={
-                        product?.model ?? ""
+                        product?.model ??
+                        ""
                       }
                       onChange={(event) =>
                         updateProductField(
                           "model",
-                          event.target.value
+                          event.target
+                            .value
                         )
                       }
                     />
                   ) : (
                     <strong>
-                      {product?.model}
+                      {product?.model ||
+                        "Not found"}
                     </strong>
                   )}
                 </div>
@@ -481,13 +588,15 @@ function ReceiptAnalysisModal({
                       onChange={(event) =>
                         updateProductField(
                           "purchaseDate",
-                          event.target.value
+                          event.target
+                            .value
                         )
                       }
                     />
                   ) : (
                     <strong>
-                      {product?.purchaseDate}
+                      {product?.purchaseDate ||
+                        "Not found"}
                     </strong>
                   )}
                 </div>
@@ -509,16 +618,18 @@ function ReceiptAnalysisModal({
                       onChange={(event) =>
                         updateProductField(
                           "purchasePrice",
-                          event.target.value
+                          event.target
+                            .value
                         )
                       }
                     />
                   ) : (
                     <strong>
-                      ₹
-                      {product?.purchasePrice.toLocaleString(
-                        "en-IN"
-                      )}
+                      {product?.purchasePrice
+                        ? `₹${product.purchasePrice.toLocaleString(
+                            "en-IN"
+                          )}`
+                        : "Not found"}
                     </strong>
                   )}
                 </div>
@@ -533,18 +644,21 @@ function ReceiptAnalysisModal({
                       className="extraction-input"
                       type="text"
                       value={
-                        product?.seller ?? ""
+                        product?.seller ??
+                        ""
                       }
                       onChange={(event) =>
                         updateProductField(
                           "seller",
-                          event.target.value
+                          event.target
+                            .value
                         )
                       }
                     />
                   ) : (
                     <strong>
-                      {product?.seller}
+                      {product?.seller ||
+                        "Not found"}
                     </strong>
                   )}
                 </div>
@@ -560,132 +674,155 @@ function ReceiptAnalysisModal({
                 </span>
               </div>
 
-              <div className="extraction-grid">
-                <div className="extraction-field">
-                  <span>
-                    Provider
-                  </span>
+              {warranty?.found ? (
+                <div className="extraction-grid">
+                  <div className="extraction-field">
+                    <span>
+                      Provider
+                    </span>
 
-                  {isEditing ? (
-                    <input
-                      className="extraction-input"
-                      type="text"
-                      value={
-                        warranty?.provider ??
-                        ""
-                      }
-                      onChange={(event) =>
-                        updateWarrantyField(
-                          "provider",
-                          event.target.value
-                        )
-                      }
-                    />
-                  ) : (
-                    <strong>
-                      {warranty?.provider}
-                    </strong>
-                  )}
+                    {isEditing ? (
+                      <input
+                        className="extraction-input"
+                        type="text"
+                        value={
+                          warranty.provider
+                        }
+                        onChange={(event) =>
+                          updateWarrantyField(
+                            "provider",
+                            event.target
+                              .value
+                          )
+                        }
+                      />
+                    ) : (
+                      <strong>
+                        {
+                          warranty.provider
+                        }
+                      </strong>
+                    )}
+                  </div>
+
+                  <div className="extraction-field">
+                    <span>
+                      Type
+                    </span>
+
+                    {isEditing ? (
+                      <select
+                        className="extraction-input"
+                        value={
+                          warranty.type
+                        }
+                        onChange={(event) =>
+                          updateWarrantyField(
+                            "type",
+                            event.target
+                              .value
+                          )
+                        }
+                      >
+                        <option value="manufacturer">
+                          Manufacturer
+                        </option>
+
+                        <option value="seller">
+                          Seller
+                        </option>
+
+                        <option value="extended">
+                          Extended
+                        </option>
+
+                        <option value="other">
+                          Other
+                        </option>
+                      </select>
+                    ) : (
+                      <strong>
+                        {warranty.type}
+                      </strong>
+                    )}
+                  </div>
+
+                  <div className="extraction-field">
+                    <span>
+                      Duration
+                    </span>
+
+                    {isEditing ? (
+                      <input
+                        className="extraction-input"
+                        type="number"
+                        min="0"
+                        value={
+                          warranty.durationMonths
+                        }
+                        onChange={(event) =>
+                          updateWarrantyField(
+                            "durationMonths",
+                            event.target
+                              .value
+                          )
+                        }
+                      />
+                    ) : (
+                      <strong>
+                        {
+                          warranty.durationMonths
+                        }{" "}
+                        months
+                      </strong>
+                    )}
+                  </div>
+
+                  <div className="extraction-field">
+                    <span>
+                      Start date
+                    </span>
+
+                    {isEditing ? (
+                      <input
+                        className="extraction-input"
+                        type="date"
+                        value={
+                          warranty.startDate
+                        }
+                        onChange={(event) =>
+                          updateWarrantyField(
+                            "startDate",
+                            event.target
+                              .value
+                          )
+                        }
+                      />
+                    ) : (
+                      <strong>
+                        {
+                          warranty.startDate
+                        }
+                      </strong>
+                    )}
+                  </div>
                 </div>
+              ) : (
+                <div className="no-warranty">
+                  <strong>
+                    No warranty
+                    information found
+                  </strong>
 
-                <div className="extraction-field">
-                  <span>
-                    Type
-                  </span>
-
-                  {isEditing ? (
-                    <select
-                      className="extraction-input"
-                      value={
-                        warranty?.type ??
-                        "manufacturer"
-                      }
-                      onChange={(event) =>
-                        updateWarrantyField(
-                          "type",
-                          event.target.value
-                        )
-                      }
-                    >
-                      <option value="manufacturer">
-                        Manufacturer
-                      </option>
-
-                      <option value="seller">
-                        Seller
-                      </option>
-
-                      <option value="extended">
-                        Extended
-                      </option>
-
-                      <option value="other">
-                        Other
-                      </option>
-                    </select>
-                  ) : (
-                    <strong>
-                      {warranty?.type}
-                    </strong>
-                  )}
+                  <p>
+                    The receipt doesn't
+                    contain reliable
+                    warranty information.
+                    You can add the
+                    warranty manually later.
+                  </p>
                 </div>
-
-                <div className="extraction-field">
-                  <span>
-                    Duration
-                  </span>
-
-                  {isEditing ? (
-                    <input
-                      className="extraction-input"
-                      type="number"
-                      min="1"
-                      value={
-                        warranty?.durationMonths ??
-                        1
-                      }
-                      onChange={(event) =>
-                        updateWarrantyField(
-                          "durationMonths",
-                          event.target.value
-                        )
-                      }
-                    />
-                  ) : (
-                    <strong>
-                      {warranty?.durationMonths}{" "}
-                      months
-                    </strong>
-                  )}
-                </div>
-
-                <div className="extraction-field">
-                  <span>
-                    Start date
-                  </span>
-
-                  {isEditing ? (
-                    <input
-                      className="extraction-input"
-                      type="date"
-                      value={
-                        warranty?.startDate ??
-                        ""
-                      }
-                      onChange={(event) =>
-                        updateWarrantyField(
-                          "startDate",
-                          event.target.value
-                        )
-                      }
-                    />
-                  ) : (
-                    <strong>
-                      {warranty?.startDate}
-                    </strong>
-                  )}
-                </div>
-              </div>
+              )}
             </div>
 
             <div className="privacy-notice">
@@ -694,10 +831,11 @@ function ReceiptAnalysisModal({
               </strong>
 
               <p>
-                AI-generated information can
-                be incorrect. Review and edit
-                the extracted information
-                before adding it to your vault.
+                AI-generated information
+                can be incorrect. Review
+                and edit the extracted
+                information before adding
+                it to your tracker.
               </p>
             </div>
 
