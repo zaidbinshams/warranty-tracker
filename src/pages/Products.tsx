@@ -226,16 +226,54 @@ function Products() {
 
   const handleDeleteProduct =
     async (id: number) => {
+      const product =
+        await db.products.get(id);
+
+      if (!product) {
+        return;
+      }
+
       const confirmed =
         window.confirm(
-          "Are you sure you want to delete this product?"
+          `Delete "${product.name}" and all of its warranties and documents? This cannot be undone.`
         );
 
       if (!confirmed) {
         return;
       }
 
-      await db.products.delete(id);
+      try {
+        await db.transaction(
+          "rw",
+          db.products,
+          db.warranties,
+          db.documents,
+          async () => {
+            await db.warranties
+              .where("productId")
+              .equals(id)
+              .delete();
+
+            await db.documents
+              .where("productId")
+              .equals(id)
+              .delete();
+
+            await db.products.delete(
+              id
+            );
+          }
+        );
+      } catch (error) {
+        console.error(
+          "Failed to delete product:",
+          error
+        );
+
+        window.alert(
+          "The product could not be deleted. Please try again."
+        );
+      }
     };
 
   /* --------------------------------
@@ -326,11 +364,6 @@ function Products() {
               updatedAt: now,
             });
 
-          /*
-           * Only create a warranty when
-           * the receipt actually contained
-           * warranty information.
-           */
           if (
             warrantyData.found &&
             warrantyData.startDate &&
@@ -378,10 +411,6 @@ function Products() {
             });
           }
 
-          /*
-           * Always preserve the original
-           * receipt alongside the product.
-           */
           await db.documents.add({
             productId,
 
