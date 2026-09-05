@@ -88,7 +88,9 @@ function ProductDetails() {
       return;
     }
 
-    await db.warranties.delete(warrantyId);
+    await db.warranties.delete(
+      warrantyId
+    );
   };
 
   const handleDeleteDocument = async (
@@ -102,7 +104,9 @@ function ProductDetails() {
       return;
     }
 
-    await db.documents.delete(documentId);
+    await db.documents.delete(
+      documentId
+    );
   };
 
   const openDocument = (document: {
@@ -117,6 +121,42 @@ function ProductDetails() {
     setTimeout(() => {
       URL.revokeObjectURL(url);
     }, 10000);
+  };
+
+  const formatDate = (
+    dateString: string
+  ) => {
+    if (!dateString) {
+      return "Not provided";
+    }
+
+    const date = new Date(
+      `${dateString}T00:00:00`
+    );
+
+    return new Intl.DateTimeFormat(
+      "en-IN",
+      {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }
+    ).format(date);
+  };
+
+  const formatPrice = (
+    price: number,
+    currency: string
+  ) => {
+    if (currency === "INR") {
+      return `₹${price.toLocaleString(
+        "en-IN"
+      )}`;
+    }
+
+    return `${currency} ${price.toLocaleString(
+      "en-IN"
+    )}`;
   };
 
   if (!Number.isInteger(id)) {
@@ -142,11 +182,13 @@ function ProductDetails() {
         </Link>
 
         <div className="empty-state">
-          <h4>Product not found</h4>
+          <h4>
+            Product not found
+          </h4>
 
           <p>
-            This product may have been deleted
-            or doesn't exist.
+            This product may have been
+            deleted or doesn't exist.
           </p>
 
           <Link
@@ -188,7 +230,7 @@ function ProductDetails() {
         </div>
       </div>
 
-      {/* Product overview */}
+      {/* Product information */}
 
       <div className="detail-grid">
         <div className="detail-card">
@@ -197,7 +239,36 @@ function ProductDetails() {
           </p>
 
           <strong>
-            {product.purchaseDate ||
+            {formatDate(
+              product.purchaseDate
+            )}
+          </strong>
+        </div>
+
+        <div className="detail-card">
+          <p className="detail-label">
+            Purchase price
+          </p>
+
+          <strong>
+            {product.purchasePrice !==
+            undefined
+              ? formatPrice(
+                  product.purchasePrice,
+                  product.currency ??
+                    "INR"
+                )
+              : "Not provided"}
+          </strong>
+        </div>
+
+        <div className="detail-card">
+          <p className="detail-label">
+            Seller
+          </p>
+
+          <strong>
+            {product.seller ||
               "Not provided"}
           </strong>
         </div>
@@ -227,7 +298,9 @@ function ProductDetails() {
 
           <button
             className="primary-button"
-            onClick={openAddWarranty}
+            onClick={
+              openAddWarranty
+            }
           >
             Add Warranty
           </button>
@@ -251,7 +324,9 @@ function ProductDetails() {
 
             <button
               className="primary-button"
-              onClick={openAddWarranty}
+              onClick={
+                openAddWarranty
+              }
             >
               Add Warranty
             </button>
@@ -282,7 +357,9 @@ function ProductDetails() {
                         </p>
 
                         <h4>
-                          {warranty.provider}
+                          {
+                            warranty.provider
+                          }
                         </h4>
                       </div>
 
@@ -300,9 +377,9 @@ function ProductDetails() {
                         </span>
 
                         <strong>
-                          {
+                          {formatDate(
                             warranty.startDate
-                          }
+                          )}
                         </strong>
                       </div>
 
@@ -312,9 +389,9 @@ function ProductDetails() {
                         </span>
 
                         <strong>
-                          {
+                          {formatDate(
                             warranty.endDate
-                          }
+                          )}
                         </strong>
                       </div>
 
@@ -405,7 +482,9 @@ function ProductDetails() {
 
           <button
             className="primary-button"
-            onClick={openDocumentModal}
+            onClick={
+              openDocumentModal
+            }
           >
             Add Document
           </button>
@@ -429,7 +508,9 @@ function ProductDetails() {
 
             <button
               className="primary-button"
-              onClick={openDocumentModal}
+              onClick={
+                openDocumentModal
+              }
             >
               Add Document
             </button>
@@ -442,7 +523,7 @@ function ProductDetails() {
                   className="document-card"
                   key={document.id}
                 >
-                  <div>
+                  <div className="document-information">
                     <p className="product-brand">
                       {document.type}
                     </p>
