@@ -71,6 +71,12 @@ function ReceiptAnalysisModal({
   const [warranty, setWarranty] =
     useState<ExtractedWarranty | null>(null);
 
+  const [isManualWarranty, setIsManualWarranty] =
+    useState(false);
+
+  const [manualWarrantyError, setManualWarrantyError] =
+    useState("");
+
   const handleFileChange = (
     event: ChangeEvent<HTMLInputElement>
   ) => {
@@ -189,6 +195,8 @@ function ReceiptAnalysisModal({
 
       setProduct(result.product);
       setWarranty(result.warranty);
+      setIsManualWarranty(false);
+      setManualWarrantyError("");
 
       setIsComplete(true);
       setIsEditing(false);
@@ -237,6 +245,8 @@ function ReceiptAnalysisModal({
     field: keyof ExtractedWarranty,
     value: string
   ) => {
+    setManualWarrantyError("");
+
     setWarranty((current) => {
       if (!current) {
         return current;
@@ -274,12 +284,43 @@ function ReceiptAnalysisModal({
     });
   };
 
+  const addManualWarranty = () => {
+    setIsManualWarranty(true);
+    setManualWarrantyError("");
+    setIsEditing(true);
+
+    setWarranty((current) => ({
+      found: true,
+      provider: current?.provider ?? "",
+      type: current?.type ?? "manufacturer",
+      durationMonths:
+        current?.durationMonths ?? 0,
+      startDate:
+        current?.startDate ||
+        product?.purchaseDate ||
+        "",
+    }));
+  };
+
   const handleSave = () => {
     if (
       !file ||
       !product ||
       !warranty
     ) {
+      return;
+    }
+
+    if (
+      warranty.found &&
+      (!warranty.provider.trim() ||
+        !warranty.startDate ||
+        warranty.durationMonths <= 0)
+    ) {
+      setManualWarrantyError(
+        "Enter the warranty provider, start date, and a duration greater than 0 months."
+      );
+      setIsEditing(true);
       return;
     }
 
@@ -295,6 +336,8 @@ function ReceiptAnalysisModal({
     setIsEditing(false);
     setProduct(null);
     setWarranty(null);
+    setIsManualWarranty(false);
+    setManualWarrantyError("");
     setError("");
   };
 
@@ -675,138 +718,152 @@ function ReceiptAnalysisModal({
               </div>
 
               {warranty?.found ? (
-                <div className="extraction-grid">
-                  <div className="extraction-field">
-                    <span>
-                      Provider
-                    </span>
+                <>
+                  <div className="extraction-grid">
+                    <div className="extraction-field">
+                      <span>
+                        Provider
+                      </span>
 
-                    {isEditing ? (
-                      <input
-                        className="extraction-input"
-                        type="text"
-                        value={
-                          warranty.provider
-                        }
-                        onChange={(event) =>
-                          updateWarrantyField(
-                            "provider",
-                            event.target
-                              .value
-                          )
-                        }
-                      />
-                    ) : (
-                      <strong>
-                        {
-                          warranty.provider
-                        }
-                      </strong>
-                    )}
+                      {isEditing ? (
+                        <input
+                          className="extraction-input"
+                          type="text"
+                          value={
+                            warranty.provider
+                          }
+                          onChange={(event) =>
+                            updateWarrantyField(
+                              "provider",
+                              event.target
+                                .value
+                            )
+                          }
+                        />
+                      ) : (
+                        <strong>
+                          {
+                            warranty.provider
+                          }
+                        </strong>
+                      )}
+                    </div>
+
+                    <div className="extraction-field">
+                      <span>
+                        Type
+                      </span>
+
+                      {isEditing ? (
+                        <select
+                          className="extraction-input"
+                          value={
+                            warranty.type
+                          }
+                          onChange={(event) =>
+                            updateWarrantyField(
+                              "type",
+                              event.target
+                                .value
+                            )
+                          }
+                        >
+                          <option value="manufacturer">
+                            Manufacturer
+                          </option>
+
+                          <option value="seller">
+                            Seller
+                          </option>
+
+                          <option value="extended">
+                            Extended
+                          </option>
+
+                          <option value="other">
+                            Other
+                          </option>
+                        </select>
+                      ) : (
+                        <strong>
+                          {warranty.type}
+                        </strong>
+                      )}
+                    </div>
+
+                    <div className="extraction-field">
+                      <span>
+                        Duration
+                      </span>
+
+                      {isEditing ? (
+                        <input
+                          className="extraction-input"
+                          type="number"
+                          min="0"
+                          value={
+                            warranty.durationMonths
+                          }
+                          onChange={(event) =>
+                            updateWarrantyField(
+                              "durationMonths",
+                              event.target
+                                .value
+                            )
+                          }
+                        />
+                      ) : (
+                        <strong>
+                          {
+                            warranty.durationMonths
+                          }{" "}
+                          months
+                        </strong>
+                      )}
+                    </div>
+
+                    <div className="extraction-field">
+                      <span>
+                        Start date
+                      </span>
+
+                      {isEditing ? (
+                        <input
+                          className="extraction-input"
+                          type="date"
+                          value={
+                            warranty.startDate
+                          }
+                          onChange={(event) =>
+                            updateWarrantyField(
+                              "startDate",
+                              event.target
+                                .value
+                            )
+                          }
+                        />
+                      ) : (
+                        <strong>
+                          {
+                            warranty.startDate
+                          }
+                        </strong>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="extraction-field">
-                    <span>
-                      Type
-                    </span>
+                  <p className="review-hint">
+                    {isManualWarranty
+                      ? "Warranty details were added manually."
+                      : "Warranty information was extracted from the receipt."}
+                  </p>
 
-                    {isEditing ? (
-                      <select
-                        className="extraction-input"
-                        value={
-                          warranty.type
-                        }
-                        onChange={(event) =>
-                          updateWarrantyField(
-                            "type",
-                            event.target
-                              .value
-                          )
-                        }
-                      >
-                        <option value="manufacturer">
-                          Manufacturer
-                        </option>
-
-                        <option value="seller">
-                          Seller
-                        </option>
-
-                        <option value="extended">
-                          Extended
-                        </option>
-
-                        <option value="other">
-                          Other
-                        </option>
-                      </select>
-                    ) : (
-                      <strong>
-                        {warranty.type}
-                      </strong>
-                    )}
-                  </div>
-
-                  <div className="extraction-field">
-                    <span>
-                      Duration
-                    </span>
-
-                    {isEditing ? (
-                      <input
-                        className="extraction-input"
-                        type="number"
-                        min="0"
-                        value={
-                          warranty.durationMonths
-                        }
-                        onChange={(event) =>
-                          updateWarrantyField(
-                            "durationMonths",
-                            event.target
-                              .value
-                          )
-                        }
-                      />
-                    ) : (
-                      <strong>
-                        {
-                          warranty.durationMonths
-                        }{" "}
-                        months
-                      </strong>
-                    )}
-                  </div>
-
-                  <div className="extraction-field">
-                    <span>
-                      Start date
-                    </span>
-
-                    {isEditing ? (
-                      <input
-                        className="extraction-input"
-                        type="date"
-                        value={
-                          warranty.startDate
-                        }
-                        onChange={(event) =>
-                          updateWarrantyField(
-                            "startDate",
-                            event.target
-                              .value
-                          )
-                        }
-                      />
-                    ) : (
-                      <strong>
-                        {
-                          warranty.startDate
-                        }
-                      </strong>
-                    )}
-                  </div>
-                </div>
+                  {manualWarrantyError && (
+                    <div className="file-error">
+                      {manualWarrantyError}
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="no-warranty">
                   <strong>
@@ -818,9 +875,17 @@ function ReceiptAnalysisModal({
                     The receipt doesn't
                     contain reliable
                     warranty information.
-                    You can add the
-                    warranty manually later.
+                    You can add it now
+                    without leaving this review.
                   </p>
+
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={addManualWarranty}
+                  >
+                    Add warranty manually
+                  </button>
                 </div>
               )}
             </div>
