@@ -59,8 +59,10 @@ function Products() {
   const handleInputChange = (
     event: ChangeEvent<HTMLInputElement>
   ) => {
-    const { name, value } =
-      event.target;
+    const {
+      name,
+      value,
+    } = event.target;
 
     setFormData((current) => ({
       ...current,
@@ -111,7 +113,8 @@ function Products() {
       new Date().toISOString();
 
     const purchasePrice =
-      formData.purchasePrice.trim() !== ""
+      formData.purchasePrice.trim() !==
+      ""
         ? Number(
             formData.purchasePrice
           )
@@ -185,7 +188,8 @@ function Products() {
     }
 
     const purchasePrice =
-      formData.purchasePrice.trim() !== ""
+      formData.purchasePrice.trim() !==
+      ""
         ? Number(
             formData.purchasePrice
           )
@@ -236,7 +240,7 @@ function Products() {
 
       const confirmed =
         window.confirm(
-          `Delete "${product.name}" and all of its warranties and documents? This cannot be undone.`
+          `Delete "${product.name}" and all of its warranties, documents, and claims? This cannot be undone.`
         );
 
       if (!confirmed) {
@@ -249,6 +253,7 @@ function Products() {
           db.products,
           db.warranties,
           db.documents,
+          db.claims,
           async () => {
             await db.warranties
               .where("productId")
@@ -256,6 +261,11 @@ function Products() {
               .delete();
 
             await db.documents
+              .where("productId")
+              .equals(id)
+              .delete();
+
+            await db.claims
               .where("productId")
               .equals(id)
               .delete();
@@ -372,9 +382,9 @@ function Products() {
               0
           ) {
             const endDate = addMonths(
-  warrantyData.startDate,
-  warrantyData.durationMonths
-);
+              warrantyData.startDate,
+              warrantyData.durationMonths
+            );
 
             await db.warranties.add({
               productId,
@@ -830,7 +840,8 @@ function Products() {
 
       {/* Warranty modal */}
 
-      {warrantyProductId !== null && (
+      {warrantyProductId !==
+        null && (
         <AddWarrantyModal
           productId={
             warrantyProductId

@@ -1085,15 +1085,20 @@ button {
   text-decoration: none;
 }
 
-.product-information:hover h4 {
+a.product-information:hover h4 {
   text-decoration: underline;
   text-decoration-color: #7E824D;
 }
 
-.product-information:focus-visible {
+a.product-information:focus-visible {
   outline: 2px solid #87B086;
   outline-offset: 4px;
   border-radius: 4px;
+}
+
+.claim-information {
+  flex: 1;
+  min-width: 0;
 }
 
 .review-actions {

@@ -1,4 +1,5 @@
 import { useLiveQuery } from "dexie-react-hooks";
+
 import { db } from "./database";
 
 export function useProducts() {
@@ -67,5 +68,35 @@ export function useProductDocuments(
         .sortBy("createdAt");
     },
     [productId]
+  );
+}
+
+export function useClaims() {
+  return useLiveQuery(
+    () =>
+      db.claims
+        .orderBy("createdAt")
+        .reverse()
+        .toArray(),
+    []
+  );
+}
+
+export function useWarrantyClaims(
+  warrantyId?: number
+) {
+  return useLiveQuery(
+    () => {
+      if (!warrantyId) {
+        return [];
+      }
+
+      return db.claims
+        .where("warrantyId")
+        .equals(warrantyId)
+        .reverse()
+        .sortBy("createdAt");
+    },
+    [warrantyId]
   );
 }

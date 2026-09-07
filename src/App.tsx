@@ -1,9 +1,14 @@
-import { NavLink, Route, Routes } from "react-router-dom";
+import {
+  NavLink,
+  Route,
+  Routes,
+} from "react-router-dom";
 
 import Dashboard from "./pages/Dashboard";
 import Products from "./pages/Products";
 import ProductDetails from "./pages/ProductDetails";
 import Documents from "./pages/Documents";
+import Claims from "./pages/Claims";
 
 function App() {
   return (
@@ -25,7 +30,11 @@ function App() {
             to="/"
             end
             className={({ isActive }) =>
-              `nav-item ${isActive ? "active" : ""}`
+              `nav-item ${
+                isActive
+                  ? "active"
+                  : ""
+              }`
             }
           >
             Dashboard
@@ -34,7 +43,11 @@ function App() {
           <NavLink
             to="/products"
             className={({ isActive }) =>
-              `nav-item ${isActive ? "active" : ""}`
+              `nav-item ${
+                isActive
+                  ? "active"
+                  : ""
+              }`
             }
           >
             Products
@@ -43,7 +56,11 @@ function App() {
           <NavLink
             to="/documents"
             className={({ isActive }) =>
-              `nav-item ${isActive ? "active" : ""}`
+              `nav-item ${
+                isActive
+                  ? "active"
+                  : ""
+              }`
             }
           >
             Documents
@@ -52,7 +69,11 @@ function App() {
           <NavLink
             to="/claims"
             className={({ isActive }) =>
-              `nav-item ${isActive ? "active" : ""}`
+              `nav-item ${
+                isActive
+                  ? "active"
+                  : ""
+              }`
             }
           >
             Claims
@@ -61,8 +82,14 @@ function App() {
 
         <div className="sidebar-bottom">
           <div className="privacy-card">
-            <span>Private by default</span>
-            <p>Your data stays on this device.</p>
+            <span>
+              Private by default
+            </span>
+
+            <p>
+              Your data stays on this
+              device.
+            </p>
           </div>
         </div>
       </aside>
@@ -81,24 +108,19 @@ function App() {
 
           <Route
             path="/products/:productId"
-            element={<ProductDetails />}
+            element={
+              <ProductDetails />
+            }
           />
 
           <Route
-  path="/documents"
-  element={<Documents />}
-/>
+            path="/documents"
+            element={<Documents />}
+          />
 
           <Route
             path="/claims"
-            element={
-              <div className="page-section">
-                <h1>Claims</h1>
-                <p>
-                  Your warranty claims will appear here.
-                </p>
-              </div>
-            }
+            element={<Claims />}
           />
         </Routes>
       </main>
